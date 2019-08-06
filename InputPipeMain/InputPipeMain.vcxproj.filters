@@ -39,6 +39,12 @@
     <ClInclude Include="..\Share\Common.h">
       <Filter>ソース ファイル\Share</Filter>
     </ClInclude>
+    <ClInclude Include="..\Share\ptreeWrapper.h">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClInclude>
+    <ClInclude Include="MainDlg.h">
+      <Filter>ソース ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="InputPipeMain.cpp">
@@ -48,6 +54,12 @@
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
     <ClCompile Include="..\Share\Logger.cpp">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClCompile>
+    <ClCompile Include="MainDlg.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Share\Common.cpp">
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
   </ItemGroup>

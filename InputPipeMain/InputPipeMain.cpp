@@ -11,8 +11,10 @@
 #include "..\Share\Logger.h"
 #include "..\Share\Common.h"
 #include "..\InputPipePlugin\input.h"
+#include "MainDlg.h"
 
 // グローバル変数:
+CAppModule _Module;
 HMODULE g_hModule;
 
 HMODULE	g_hWinputDll = NULL;
@@ -27,6 +29,46 @@ std::string	LogFileName()
 	return (GetExeDirectory() / L"InputPipeMain.log").string();
 }
 
+int Run()
+{
+	HRESULT hRes = ::CoInitialize(NULL);
+	// If you are running on NT 4.0 or higher you can use the following call instead to 
+	// make the EXE free threaded. This means that calls come in on a random RPC thread.
+	//	HRESULT hRes = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	ATLASSERT(SUCCEEDED(hRes));
+
+	// this resolves ATL window thunking problem when Microsoft Layer for Unicode (MSLU) is used
+	::DefWindowProc(NULL, 0, 0, 0L);
+
+	AtlInitCommonControls(ICC_BAR_CLASSES);	// add flags to support other controls
+
+	hRes = _Module.Init(NULL, g_hModule);
+	ATLASSERT(SUCCEEDED(hRes));
+
+	int nRet = 0;
+	{
+		CMessageLoop theLoop;
+		_Module.AddMessageLoop(&theLoop);
+
+		CMainDlg dlgMain;
+
+		if (dlgMain.Create(NULL) == NULL)
+		{
+			ATLTRACE(_T("Main dialog creation failed!\n"));
+			return 0;
+		}
+
+		dlgMain.ShowWindow(SW_SHOWNORMAL);
+
+		nRet = theLoop.Run();
+
+		_Module.RemoveMessageLoop();
+	}
+
+	_Module.Term();
+	::CoUninitialize();
+	return nRet;
+}
 
 ///////////////////////////////////////////////////////////////
 
@@ -47,6 +89,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		MessageBox(NULL, pluginExists ? L"lwinput.aui が同じフォルダに存在しています！" 
 									  : L"lwinput.aui が同じフォルダに存在しません...", L"InputPipeMain", MB_OK);
 		return 0;
+	} else if (cmdLine == L"-config") {
+		int ret = Run();
+		return ret;
 	}
 
 	auto llhandle = std::stoll(cmdLine);

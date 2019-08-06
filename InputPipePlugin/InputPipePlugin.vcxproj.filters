@@ -59,6 +59,9 @@
     <ClCompile Include="..\Share\CodeConvert.cpp">
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
+    <ClCompile Include="..\Share\Common.cpp">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="input.def">

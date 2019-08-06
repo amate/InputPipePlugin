@@ -35,14 +35,20 @@ namespace fs = std::experimental::filesystem;
 extern HMODULE g_hModule;
 
 /// 現在実行中の exeのあるフォルダのパスを返す
-inline fs::path GetExeDirectory()
-{
-	WCHAR exePath[MAX_PATH] = L"";
-	GetModuleFileName(g_hModule, exePath, MAX_PATH);
-	fs::path exeFolder = exePath;
-	return exeFolder.parent_path();
-}
+fs::path GetExeDirectory();
 
+////////////////////////////////////////////////////////////////
+
+constexpr LPCSTR	kConfigFileName = "InputPipePluginConfig.ini";
+
+struct Config
+{
+	bool	bEnableHandleCache;
+	bool	bEnableIPC;
+
+	bool	LoadConfig();
+	bool	SaveConfig();
+};
 
 ////////////////////////////////////////////////////////////////
 
