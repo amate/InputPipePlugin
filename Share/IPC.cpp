@@ -67,7 +67,7 @@ bool NamedPipe::CreateNamedPipe(const std::wstring& pipeName)
 {
 	m_hPipe = ::CreateNamedPipe(pipeName.c_str(), 
 		PIPE_ACCESS_DUPLEX,       // read/write access 
-		PIPE_TYPE_MESSAGE |       // message type pipe 
+		PIPE_TYPE_BYTE |       // byte type pipe 
 		PIPE_READMODE_BYTE |   // byte-read mode 
 		PIPE_WAIT,                // blocking mode
 		kMaxInstance, kBuffSize, kBuffSize, 0, nullptr);
