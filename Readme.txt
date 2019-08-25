@@ -85,6 +85,9 @@ http://sourceforge.net/projects/wtl/
 
 
 ■更新履歴
+v1.3
+・[fix] func_read_videoで画像の取得に失敗した場合、一度前のフレームを取得してから目的のフレームを取得するようにした [緑の画面が出る対策](ワークアラウンドっぽいがとりあえず動く)
+
 v1.2
 ・[fix] CreateNamedPipeでPIPE_TYPE_MESSAGEのままだったのを修正
 ・[add] NamedPipe::Read failed 時に、GetLastErrorの内容を書き込むようにした(上の修正でもう書き込まれないはず…)

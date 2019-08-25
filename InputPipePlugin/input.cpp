@@ -409,26 +409,53 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
-		const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
+		auto funcIPCReadVideo = [ih, buf](int frame) -> int {
+			const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
 
-		StandardParamPack spp = { ih, frame };
-		spp.perBufferSize = OneFrameBufferSize;
-		auto toData = GenerateToInputData(CallFunc::kReadVideo, spp);
-		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
+			StandardParamPack spp = { ih, frame };
+			spp.perBufferSize = OneFrameBufferSize;
+			auto toData = GenerateToInputData(CallFunc::kReadVideo, spp);
+			g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
 
-		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
-		FromWinputData* fromData = (FromWinputData*)headerData.data();
-		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
-		assert(fromData->callFunc == CallFunc::kReadVideo);
-		int readBytes = 0;
-		int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
-		assert(nRet == sizeof(readBytes));
-		assert((readBytes + sizeof(int)) == fromData->returnSize);
-		nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
-		assert(nRet == readBytes);
+			std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
+			FromWinputData* fromData = (FromWinputData*)headerData.data();
+			//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+			assert(fromData->callFunc == CallFunc::kReadVideo);
+			int readBytes = 0;
+			int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
+			assert(nRet == sizeof(readBytes));
+			assert((readBytes + sizeof(int)) == fromData->returnSize);
+			nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
+			assert(nRet == readBytes);
+			return readBytes;
+		};
+		int readBytes = funcIPCReadVideo(frame);
+		if (readBytes == 0) {
+			//INFO_LOG << L"func_read_video" << L" frame: " << frame;
+			//INFO_LOG << L"readBytes == 0 : retry request prevFrame";
+			// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
+			int prevFrame = frame - 1;
+			if (prevFrame < 0) {
+				prevFrame = frame + 1;
+			}
+			int prevReadBytes = funcIPCReadVideo(prevFrame);
+			//INFO_LOG << L"prevReadBytes: " << prevReadBytes;
+			readBytes = funcIPCReadVideo(frame);
+			//INFO_LOG << L"readBytes: " << readBytes;
+		}
 		return readBytes;
+
 	} else {
 		int n = g_winputPluginTable->func_read_video(ih, frame, buf);
+		if (n == 0) {
+			// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
+			int prevFrame = frame - 1;
+			if (prevFrame < 0) {
+				prevFrame = frame + 1;
+			}
+			int prevReadBytes = g_winputPluginTable->func_read_video(ih, prevFrame, buf);
+			int n = g_winputPluginTable->func_read_video(ih, frame, buf);
+		}
 		return n;
 	}
 #if 0
