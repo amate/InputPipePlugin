@@ -8,6 +8,8 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
+#include <random>
+#include <mutex>
 #include <windows.h>
 //#include	<vfw.h>
 //#pragma comment(lib, "Vfw32.lib")
@@ -30,7 +32,7 @@ BindProcess	g_bindProcess;
 LPCWSTR		kPipeName = LR"(\\.\pipe\InputPipePlugin)";
 NamedPipe	g_namedPipe;
 
-std::vector<BYTE> g_lastInfoGetData;
+//std::vector<BYTE> g_lastInfoGetData;
 
 Config		m_config;
 
@@ -42,8 +44,12 @@ struct FrameAudioVideoBufferSize
 
 std::unordered_map<INPUT_HANDLE, FrameAudioVideoBufferSize> g_mapFrameBufferSize;
 
+std::unordered_map<INPUT_HANDLE, std::unique_ptr<BYTE[]>> g_mapInputHandleInfoGetData;
+
 using HandleCache = std::tuple<std::string, INPUT_HANDLE, int>;
 std::vector<HandleCache>	g_vecHandleCache;
+
+std::mutex	g_mtxIPC;
 
 // for Logger
 std::string	LogFileName()
@@ -129,7 +135,16 @@ BOOL func_init( void )
 
 	if (m_config.bEnableIPC) {
 		INFO_LOG << "EnableIPC";
-		std::wstring pipeName = std::wstring(kPipeName) + std::to_wstring((uint64_t)g_hModule);
+
+		enum { kRandamStrLength = 64 };
+		std::random_device  randdev;
+		WCHAR tempstr[] = L"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		std::uniform_int_distribution<int> dist(0, std::size(tempstr) - 1);
+		std::wstring randamString = L"_";
+		for (int i = 0; i < kRandamStrLength; ++i) {
+			randamString += tempstr[dist(randdev)];
+		}
+		std::wstring pipeName = std::wstring(kPipeName) + randamString;
 		bool ret = g_namedPipe.CreateNamedPipe(pipeName);
 		// INFO_LOG << L"CreateNamedPipe: " << pipeName << L" ret: " << ret;
 
@@ -173,6 +188,7 @@ BOOL func_exit( void )
 INPUT_HANDLE func_open( LPSTR file )
 {
 	INFO_LOG << L"func_open: " << CodeConvert::UTF16fromShiftJIS(file);
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
 #ifndef NO_REMOTE
 	if (m_config.bEnableHandleCache) {
@@ -201,6 +217,8 @@ INPUT_HANDLE func_open( LPSTR file )
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kOpen);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
 		INPUT_HANDLE ih2 = *(INPUT_HANDLE*)readBody.data();
 		INFO_LOG << ih2;
@@ -229,6 +247,7 @@ INPUT_HANDLE func_open( LPSTR file )
 BOOL func_close( INPUT_HANDLE ih )
 {
 	INFO_LOG << L"func_close: " << ih;
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
 	if (m_config.bEnableHandleCache) {
 		auto itfound = std::find_if(g_vecHandleCache.begin(), g_vecHandleCache.end(),
@@ -252,12 +271,19 @@ BOOL func_close( INPUT_HANDLE ih )
 		}
 	}
 	if (m_config.bEnableIPC) {
+		auto itfound = g_mapInputHandleInfoGetData.find(ih);
+		if (itfound != g_mapInputHandleInfoGetData.end()) {
+			g_mapInputHandleInfoGetData.erase(itfound);
+		}
+
 		StandardParamPack spp = { ih };
 		auto toData = GenerateToInputData(CallFunc::kClose, spp);
 		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kClose);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
 		auto retData = ParseFromInputData<BOOL>(readBody);
 
@@ -298,26 +324,46 @@ BOOL func_close( INPUT_HANDLE ih )
 BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 {
 	INFO_LOG << L"func_info_get";
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
+		auto itfound = g_mapInputHandleInfoGetData.find(ih);
+		if (itfound != g_mapInputHandleInfoGetData.end()) {
+			INFO_LOG << L"InfoGetData cache found!";
+			*iip = *reinterpret_cast<INPUT_INFO*>(itfound->second.get());
+			return TRUE;
+		}
+
 		StandardParamPack spp = { ih };
 		auto toData = GenerateToInputData(CallFunc::kInfoGet, spp);
 		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kInfoGet);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
 		auto retData = ParseFromInputData<BOOL>(readBody);
-		*iip = *(INPUT_INFO*)retData.second;
-		iip->format = (BITMAPINFOHEADER*)(retData.second + sizeof(INPUT_INFO));
-		iip->audio_format = (WAVEFORMATEX*)(retData.second + sizeof(INPUT_INFO) + iip->format_size);
-		g_lastInfoGetData = std::move(readBody);
+		if (retData.first) {
+			auto tempInputInfo = (INPUT_INFO*)retData.second;
+			const int infoGetDataSize = sizeof(INPUT_INFO) + tempInputInfo->format_size + tempInputInfo->audio_format_size;
+			auto infoGetData = std::make_unique<BYTE[]>(infoGetDataSize);
+			memcpy_s(infoGetData.get(), infoGetDataSize, tempInputInfo, infoGetDataSize);
 
-		int OneFrameBufferSize = iip->format->biWidth * iip->format->biHeight * (iip->format->biBitCount / 8) + kVideoBufferSurplusBytes;
-		int PerAudioSampleBufferSize = iip->audio_format->nChannels * (iip->audio_format->wBitsPerSample / 8);
-		g_mapFrameBufferSize.emplace(ih, FrameAudioVideoBufferSize{ OneFrameBufferSize , PerAudioSampleBufferSize });
+			auto igData = reinterpret_cast<INPUT_INFO*>(infoGetData.get());
+			igData->format = (BITMAPINFOHEADER*)(infoGetData.get() + sizeof(INPUT_INFO));
+			igData->audio_format = (WAVEFORMATEX*)(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size);
+			*iip = *igData;
+			g_mapInputHandleInfoGetData.emplace(ih, std::move(infoGetData));
 
-		INFO_LOG << L"OneFrameBufferSize: " << OneFrameBufferSize << L" PerAudioSampleBufferSize: " << PerAudioSampleBufferSize;
+			const int OneFrameBufferSize = iip->format->biWidth * iip->format->biHeight * (iip->format->biBitCount / 8);
+			const int PerAudioSampleBufferSize = iip->audio_format->nChannels * (iip->audio_format->wBitsPerSample / 8);
+			g_mapFrameBufferSize.emplace(ih, FrameAudioVideoBufferSize{ OneFrameBufferSize , PerAudioSampleBufferSize });
+
+			INFO_LOG << L"OneFrameBufferSize: " << OneFrameBufferSize << L" PerAudioSampleBufferSize: " << PerAudioSampleBufferSize;
+		} else {
+			ERROR_LOG << L"func_info_get failed, ih: " << ih;
+		}
 		return retData.first;
 	} else {
 		BOOL b = g_winputPluginTable->func_info_get(ih, iip);
@@ -360,6 +406,7 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 {
 	//INFO_LOG << L"func_read_video" << L" frame: " << frame;
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
 		const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
@@ -371,6 +418,8 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kReadVideo);
 		int readBytes = 0;
 		int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
 		assert(nRet == sizeof(readBytes));
@@ -413,6 +462,7 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 {
 	//INFO_LOG << L"func_read_audio: " << ih << L" start: " << start << L" length: " << length;
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
@@ -424,10 +474,13 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kReadAudio);
 		int readSample = 0;
 		int nRet = g_namedPipe.Read((BYTE*)& readSample, sizeof(readSample));
 		assert(nRet == sizeof(readSample));
 		const int audioBufferSize = fromData->returnSize - sizeof(int);
+		assert(audioBufferSize >= 0);
 		nRet = g_namedPipe.Read((BYTE*)buf, audioBufferSize);
 		assert(nRet == audioBufferSize);
 		return readSample;
@@ -466,6 +519,7 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 {
 	// INFO_LOG << L"func_is_keyframe" << L" frame:" << frame;
+	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
@@ -475,6 +529,7 @@ BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		assert(fromData->callFunc == CallFunc::kIsKeyframe);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
 		auto retData = ParseFromInputData<BOOL>(readBody);
 		return retData.first;

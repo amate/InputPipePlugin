@@ -24,7 +24,7 @@ BOOL func_config(HWND hwnd, HINSTANCE dll_hinst);
 
 ////////////////////////////////////////////////////////////////
 
-#define		PLUGIN_VERSION	"1.0"
+#define		PLUGIN_VERSION	"1.1"
 
 
 constexpr	int kVideoBufferSurplusBytes = 0x3FF;
@@ -52,7 +52,7 @@ struct Config
 
 ////////////////////////////////////////////////////////////////
 
-enum class CallFunc : char
+enum class CallFunc : std::int32_t
 {
 	kOpen = 1,
 	kClose,
@@ -107,6 +107,7 @@ std::shared_ptr<ToWinputData> GenerateToInputData(CallFunc callFunc, RetParam1T 
 
 struct FromWinputData
 {
+	CallFunc callFunc;
 	std::int32_t returnSize;
 	unsigned char returnData[1];
 };
@@ -118,13 +119,14 @@ inline int FromWinputDataTotalSize(const FromWinputData& data) {
 }
 
 template<class RetT, class RetParamT>
-std::shared_ptr<FromWinputData> GenerateFromInputData(RetT ret, RetParamT retParam)
+std::shared_ptr<FromWinputData> GenerateFromInputData(CallFunc callFunc, RetT ret, RetParamT retParam)
 {
 	size_t returnSize = sizeof(ret) + sizeof(retParam);
 	std::shared_ptr<FromWinputData> fromData((FromWinputData*)new BYTE[kToWindDataHeaderSize + returnSize], 
 		[](FromWinputData* p) {
 		delete[] (BYTE*)p;  
 	});
+	fromData->callFunc = callFunc;
 	fromData->returnSize = returnSize;
 	memcpy_s(fromData->returnData, sizeof(ret), &ret, sizeof(ret));
 	memcpy_s(fromData->returnData + sizeof(ret), sizeof(retParam), &retParam, sizeof(retParam));
@@ -132,16 +134,17 @@ std::shared_ptr<FromWinputData> GenerateFromInputData(RetT ret, RetParamT retPar
 }
 
 template<class RetT>
-std::shared_ptr<FromWinputData> GenerateFromInputData(RetT ret, const std::vector<BYTE>& retParam)
+std::shared_ptr<FromWinputData> GenerateFromInputData(CallFunc callFunc, RetT ret, const BYTE* retParam, int retParamSize)
 {
-	size_t returnSize = sizeof(ret) + retParam.size();
+	size_t returnSize = sizeof(ret) + retParamSize;
 	std::shared_ptr<FromWinputData> fromData((FromWinputData*)new BYTE[kToWindDataHeaderSize + returnSize],
 		[](FromWinputData* p) {
 			delete[](BYTE*)p;
 		});
+	fromData->callFunc = callFunc;
 	fromData->returnSize = returnSize;
 	memcpy_s(fromData->returnData, sizeof(ret), &ret, sizeof(ret));
-	memcpy_s(fromData->returnData + sizeof(ret), retParam.size(), retParam.data(), retParam.size());
+	memcpy_s(fromData->returnData + sizeof(ret), retParamSize, retParam, retParamSize);
 	return fromData;
 }
 

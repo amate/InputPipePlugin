@@ -134,6 +134,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return 0;
 	}
 
+	// for Debug
+	CallFunc	lastCallFunc;
+
 	for (;;) {
 		std::vector<BYTE> readData = namedPipe.Read(kToWindDataHeaderSize);
 		if (readData.size() == 0) {
@@ -141,16 +144,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			break;
 		}
 		ToWinputData* toData = (ToWinputData*)readData.data();
+		lastCallFunc = toData->header.callFunc;
+
 		std::vector<BYTE> dataBody = namedPipe.Read(toData->header.paramSize);
 		switch (toData->header.callFunc) {
 			case CallFunc::kOpen:
 			{
 				LPSTR file = (LPSTR)dataBody.data();
 				INPUT_HANDLE ih = g_winputPluginTable->func_open(file);
-				//INFO_LOG << L"kOpen: " << ih;
+				INFO_LOG << L"kOpen: " << ih;
 
-				auto fromData = GenerateFromInputData(ih, 0);
+				auto fromData = GenerateFromInputData(CallFunc::kOpen, ih, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 			}
 			break;
 
@@ -158,10 +164,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			{
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				BOOL b = g_winputPluginTable->func_close(spp->ih);
-				//INFO_LOG << L"kClose: " << spp->ih;
+				INFO_LOG << L"kClose: " << spp->ih;
 
-				auto fromData = GenerateFromInputData(b, 0);
+				auto fromData = GenerateFromInputData(CallFunc::kClose, b, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 			}
 			break;
 
@@ -171,20 +178,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				INPUT_INFO inputInfo = {};
 				BOOL b = g_winputPluginTable->func_info_get(spp->ih, &inputInfo);
-				//INFO_LOG << L"kInfoGet: " << spp->ih;
+				assert(b);
+				INFO_LOG << L"kInfoGet: " << spp->ih;
+				if (b) {
+					int totalInputInfoSize = sizeof(INPUT_INFO) + inputInfo.format_size + inputInfo.audio_format_size;
+					std::vector<BYTE> entireInputInfo(totalInputInfoSize);
+					errno_t e = ::memcpy_s(entireInputInfo.data(), totalInputInfoSize, &inputInfo, sizeof(INPUT_INFO));
+					e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO),
+						inputInfo.format_size,
+						inputInfo.format, inputInfo.format_size);
+					e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO) + inputInfo.format_size,
+						inputInfo.audio_format_size,
+						inputInfo.audio_format, inputInfo.audio_format_size);
 
-				int totalInputInfoSize = sizeof(INPUT_INFO) + inputInfo.format_size + inputInfo.audio_format_size;
-				std::vector<BYTE> entireInputInfo(totalInputInfoSize);
-				errno_t e = ::memcpy_s(entireInputInfo.data(), totalInputInfoSize, &inputInfo, sizeof(INPUT_INFO));
-				e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO),
-					inputInfo.format_size,
-					inputInfo.format, inputInfo.format_size);
-				e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO) + inputInfo.format_size,
-					inputInfo.audio_format_size,
-					inputInfo.audio_format, inputInfo.audio_format_size);
+					auto fromData = GenerateFromInputData(CallFunc::kInfoGet, b, entireInputInfo.data(), totalInputInfoSize);
+					namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+					//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 
-				auto fromData = GenerateFromInputData(b, entireInputInfo);
-				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+				} else {
+					auto fromData = GenerateFromInputData(CallFunc::kInfoGet, b, 0);
+					namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+					//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
+				}
 			}
 			break;
 
@@ -198,12 +213,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				int readBytes = g_winputPluginTable->func_read_video(spp->ih, spp->param1, g_readVideoBuffer.data());
 				//INFO_LOG << L"kReadVideo: " << spp->ih;
 
+				namedPipe.Write((const BYTE*)&toData->header.callFunc, sizeof(toData->header.callFunc));
 				std::int32_t totalSize = sizeof(int) + readBytes;
 				namedPipe.Write((const BYTE*)&totalSize, sizeof(totalSize));
 				namedPipe.Write((const BYTE*)&readBytes, sizeof(readBytes));
 				namedPipe.Write((const BYTE*)g_readVideoBuffer.data(), readBytes);
-				//auto fromData = GenerateFromInputData(readBytes, g_readVideoBuffer);
+				//auto fromData = GenerateFromInputData(toData->header.callFunc, readBytes, g_readVideoBuffer.data(), readBytes);
 				//namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 			}
 			break;
 
@@ -216,25 +233,29 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					g_readAudioBuffer.resize(requestReadBytes);
 				}
 				int readSample = g_winputPluginTable->func_read_audio(spp->ih, spp->param1, spp->param2, g_readAudioBuffer.data());
-				//INFO_LOG << L"kReadAudio: " << spp->ih;
+				assert(readSample > 0);
+				//INFO_LOG << L"kReadAudio: " << spp->ih << L" readSample: " << readSample;
+				const int readBufferSize = PerAudioSampleBufferSize * readSample;
 
-				std::int32_t totalSize = sizeof(int) + g_readAudioBuffer.size();
+				namedPipe.Write((const BYTE*)& toData->header.callFunc, sizeof(toData->header.callFunc));
+				std::int32_t totalSize = sizeof(int) + readBufferSize;
 				namedPipe.Write((const BYTE*)& totalSize, sizeof(totalSize));
 				namedPipe.Write((const BYTE*)& readSample, sizeof(readSample));
-				namedPipe.Write((const BYTE*)g_readAudioBuffer.data(), g_readAudioBuffer.size());
-				//auto fromData = GenerateFromInputData(readBytes, g_readAudioBuffer);
+				namedPipe.Write((const BYTE*)g_readAudioBuffer.data(), readBufferSize);
+				//auto fromData = GenerateFromInputData(toData->header.callFunc, readSample, g_readAudioBuffer.data(), readBufferSize);
 				//namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
+				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 			}
 			break;
 
 			case CallFunc::kIsKeyframe:
 			{
-				//INFO_LOG << L"kIsKeyframe";
+				INFO_LOG << L"kIsKeyframe";
 
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				BOOL b = g_winputPluginTable->func_is_keyframe(spp->ih, spp->param1);
 
-				auto fromData = GenerateFromInputData(b, 0);
+				auto fromData = GenerateFromInputData(CallFunc::kIsKeyframe, b, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
 			}
 			break;

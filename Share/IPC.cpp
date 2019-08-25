@@ -3,6 +3,7 @@
 #include <memory>
 #include <atldef.h>
 #include <assert.h>
+#include "Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////////
 // BindProcess
@@ -67,7 +68,7 @@ bool NamedPipe::CreateNamedPipe(const std::wstring& pipeName)
 	m_hPipe = ::CreateNamedPipe(pipeName.c_str(), 
 		PIPE_ACCESS_DUPLEX,       // read/write access 
 		PIPE_TYPE_MESSAGE |       // message type pipe 
-		PIPE_READMODE_MESSAGE |   // message-read mode 
+		PIPE_READMODE_BYTE |   // byte-read mode 
 		PIPE_WAIT,                // blocking mode
 		kMaxInstance, kBuffSize, kBuffSize, 0, nullptr);
 	if (m_hPipe == INVALID_HANDLE_VALUE) {
@@ -87,17 +88,17 @@ bool NamedPipe::OpenNamedPipe(const std::wstring& pipeName)
 
 	}
 	// The pipe connected; change to message-read mode. 
-	DWORD dwMode = PIPE_READMODE_MESSAGE;
-	BOOL fSuccess = ::SetNamedPipeHandleState(
-		m_hPipe,    // pipe handle 
-		&dwMode,  // new pipe mode 
-		NULL,     // don't set maximum bytes 
-		NULL);    // don't set maximum time 
-	if (!fSuccess) {
-		assert(false);
-		//_tprintf(TEXT("SetNamedPipeHandleState failed. GLE=%d\n"), GetLastError());
-		return false;
-	}
+	//DWORD dwMode = PIPE_READMODE_MESSAGE;
+	//BOOL fSuccess = ::SetNamedPipeHandleState(
+	//	m_hPipe,    // pipe handle 
+	//	&dwMode,  // new pipe mode 
+	//	NULL,     // don't set maximum bytes 
+	//	NULL);    // don't set maximum time 
+	//if (!fSuccess) {
+	//	assert(false);
+	//	//_tprintf(TEXT("SetNamedPipeHandleState failed. GLE=%d\n"), GetLastError());
+	//	return false;
+	//}
 	return true;
 }
 
@@ -152,19 +153,26 @@ int NamedPipe::Read(BYTE* data, const int length)
 #endif
 		DWORD readyBytes = 0;
 		BOOL bSuccess = ::ReadFile(m_hPipe, writeDataPos, restReadBytes, &readyBytes, nullptr);
-		restReadBytes -= readyBytes;
-		totalReadBytes = length - restReadBytes;
-
 		DWORD error = GetLastError();
-		if ((!bSuccess || readyBytes == 0) && error != ERROR_MORE_DATA) {
+		if ((!bSuccess || readyBytes == 0)) {
 			if (error == ERROR_BROKEN_PIPE) {
 				//_tprintf(TEXT("InstanceThread: client disconnected.\n"), GetLastError());
+				ERROR_LOG << L"NamedPipe::Read failed: client disconnected.";
 			} else {
 				//_tprintf(TEXT("InstanceThread ReadFile failed, GLE=%d.\n"), GetLastError());
+				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << GetLastError();
 			}
+			//if (bSuccess && readyBytes == 0) {
+			//	WARN_LOG << L"NamedPipe::Read crazy?";	// ‚È‚º‚¾‚© ReadFile ‚É¬Œ÷‚µ‚Ä readBytes ‚ª 0 ‚Ìê‡‚ª‚ ‚é‚ç‚µ‚¢...
+			//	::Sleep(10);
+			//	continue;
+			//}
+			assert(false);
 			return totalReadBytes;
 
 		} else {
+			restReadBytes -= readyBytes;
+			totalReadBytes = length - restReadBytes;
 			writeDataPos += readyBytes;	// ‘‚«ž‚ÝˆÊ’uXV
 		}
 

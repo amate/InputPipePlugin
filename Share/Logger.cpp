@@ -14,6 +14,10 @@ namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
 namespace logging = boost::log;
 
+#ifdef _DEBUG
+#define USE_CONSOLE
+#endif
+
 //std::string	LogFileName()
 //{
 //	return "info.log";
@@ -77,8 +81,9 @@ BOOST_LOG_GLOBAL_LOGGER_INIT(my_logger, logger_t)
 	sink_text->imbue(std::locale(std::locale(), new std::codecvt_utf8_utf16<wchar_t>));
 	core->add_sink(sink_text);
 
-#ifdef _DEBUG
+#ifdef USE_CONSOLE
 	// ログのコンソール出力を設定
+
 	::AllocConsole();
 	int cp;
 	cp = GetConsoleOutputCP();
