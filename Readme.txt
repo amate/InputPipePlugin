@@ -75,6 +75,10 @@ http://sourceforge.net/projects/wtl/
 
 
 ■更新履歴
+v1.2
+・[fix] CreateNamedPipeでPIPE_TYPE_MESSAGEのままだったのを修正
+・[add] NamedPipe::Read failed 時に、GetLastErrorの内容を書き込むようにした(上の修正でもう書き込まれないはず…)
+
 v1.1
 ・[fix] IPC有効時、外部プロセスとの通信にコケるのを修正(マルチスレッドで各種関数が実行されることがあるようなので、排他制御を入れた)
 ・[change] 名前付きパイプの設定を、バイトストリームモードへ変更(上のバグのせいで変なことしてた)

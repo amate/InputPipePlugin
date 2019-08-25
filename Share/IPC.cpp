@@ -5,6 +5,23 @@
 #include <assert.h>
 #include "Logger.h"
 
+
+std::wstring GetLastErrorMessage(DWORD error)
+{
+	LPVOID pMsg = nullptr;
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER  //      テキストのメモリ割り当てを要求する
+		| FORMAT_MESSAGE_FROM_SYSTEM    //      エラーメッセージはWindowsが用意しているものを使用
+		| FORMAT_MESSAGE_IGNORE_INSERTS,//      次の引数を無視してエラーコードに対するエラーメッセージを作成する
+		NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),//   言語を指定
+		(LPTSTR)&pMsg,                          //      メッセージテキストが保存されるバッファへのポインタ
+		0,
+		NULL);
+	std::wstring errorMsg = (LPCWSTR)pMsg;
+	LocalFree(pMsg);
+	return errorMsg;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////
 // BindProcess
 
@@ -155,12 +172,17 @@ int NamedPipe::Read(BYTE* data, const int length)
 		BOOL bSuccess = ::ReadFile(m_hPipe, writeDataPos, restReadBytes, &readyBytes, nullptr);
 		DWORD error = GetLastError();
 		if ((!bSuccess || readyBytes == 0)) {
+			if (error == 0) {
+				::Sleep(10);
+				continue;
+			}
+
 			if (error == ERROR_BROKEN_PIPE) {
 				//_tprintf(TEXT("InstanceThread: client disconnected.\n"), GetLastError());
 				ERROR_LOG << L"NamedPipe::Read failed: client disconnected.";
 			} else {
 				//_tprintf(TEXT("InstanceThread ReadFile failed, GLE=%d.\n"), GetLastError());
-				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << GetLastError();
+				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << error << L" [" << GetLastErrorMessage(error) << L"]";
 			}
 			//if (bSuccess && readyBytes == 0) {
 			//	WARN_LOG << L"NamedPipe::Read crazy?";	// なぜだか ReadFile に成功して readBytes が 0 の場合があるらしい...
