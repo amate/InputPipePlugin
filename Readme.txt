@@ -36,6 +36,16 @@ InputPipePlugin.aui と InputPipeMain.exe をコピーするだけです
 
 外部プロセスとの通信はコストがかかるので、重いと感じたらチェック外してください
 
+■プラグインを入れて不安定になった場合
+・拡張編集の環境設定から、動画ファイルのハンドル数を8から16程度に増やしてみてください
+・InputPipePluginの設定から[プロセス間通信を有効にする]のチェックを外してみてください
+・入力プラグインの優先度設定で、"Wave File Reader"を"InputPipePlugin"より上に移動させてみてください
+・動画ファイルがmp4の場合、コンテナをmkvに変更してみるとか(※実験的なもので効果は出ないかも…)
+
+■アンインストールの方法
+InputPipePlugin.aui と 
+InputPipeMain.exe  と 
+InputPipePluginConfig.ini を削除してください
 
 ■免責
 作者(原著者＆改変者)は、このソフトによって生じた如何なる損害にも、
