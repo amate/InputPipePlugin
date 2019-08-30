@@ -6,6 +6,13 @@
 このソフトは、L-SMASH_Works File Reader(lwinput.aui)を別プロセスで実行してあげることによって
 aviutlのメモリ使用量削減を目論む、aviutlの入力プラグインです
 
+■動作環境
+・Windows 10 home 64bit バージョン 1903
+・AviUtl 1.00
+・L-SMASH Works r935 release2
+上記の環境で動作を確認しています
+XPではたぶん動きません(コンパイラが対応していないため)
+
 ■導入方法
 lwinput.aui が置いてあるフォルダ(aviutl.exeがあるフォルダ、もしくは "aviutl.exeがあるフォルダ\plugins\"に存在するはず)に、
 InputPipePlugin.aui と InputPipeMain.exe をコピーするだけです
@@ -56,7 +63,7 @@ InputPipePluginConfig.ini を削除してください
 https://ws.formzu.net/fgen/S37403840/
  
 ■著作権表示
-Copyright (C) 2018 amate
+Copyright (C) 2019 amate
 
 私が書いた部分のソースコードは、MIT License とします。
 
@@ -65,6 +72,25 @@ aviutlの作者様、L-SMASH Worksの作者様
 あなた方の活躍のおかげで、素晴らしい動画がたくさん生まれていることに感謝いたします
 ありがとう！
 
+■誰かの役に立つかもしれない情報
+
+〇GeForce Experience(ShadowPlay)で録画したファイルを編集しようとしたら音ズレしてる！
+動画プレイヤーで再生したときは音ズレしていないのに、aviutlで編集しようとしたらなぜか音ズレしてしまっている場合、
+→Avidemuxを使ってコンテナをmkvに変更する
+AvidemuxのVideo OutputとAudio OutputをCopyに、Output FormatをMkv Muxerに変更して
+ファイルを読み込んだ後、Saveで出力する
+出来上がったmkvファイルを読み込むとなぜか音ズレしていない
+
+〇OBS Studioで録画したファイルのシークが死ぬほど遅い！
+→Avidemuxを使ってコンテナをmkvに変更する
+上記の手順を実行
+なぜかシークが軽くなっている
+
+〇Detected CTS duplication at frame XXX ってダイアログが出る！
+→Avidemuxを使ってコンテナをmkvに変更する
+以下略
+
+コンテナを変更するだけでなぜ直るのかは謎
  
 ■ビルドについて
 Visual Studio 2019 が必要です
@@ -85,6 +111,10 @@ http://sourceforge.net/projects/wtl/
 
 
 ■更新履歴
+v1.4
+・[change]プロセス間通信有効、func_read_videoで画像の取得に失敗した場合の処理をInputPipePlugin.auiではなく、InputPipeMain.exeで実行するようにした
+・[add]プロセス間通信無効時でも、func_info_getでキャッシュ情報を返すようにした
+
 v1.3
 ・[fix] func_read_videoで画像の取得に失敗した場合、一度前のフレームを取得してから目的のフレームを取得するようにした [緑の画面が出る対策](ワークアラウンドっぽいがとりあえず動く)
 

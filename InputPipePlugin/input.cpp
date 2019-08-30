@@ -1,5 +1,5 @@
-//----------------------------------------------------------------------------------
-//		ƒTƒ“ƒvƒ‹AVI(vfwŒo—R)“ü—Íƒvƒ‰ƒOƒCƒ“  for AviUtl ver0.98ˆÈ~
+ï»¿//----------------------------------------------------------------------------------
+//		ã‚µãƒ³ãƒ—ãƒ«AVI(vfwçµŒç”±)å…¥åŠ›ãƒ—ãƒ©ã‚°ã‚¤ãƒ³  for AviUtl ver0.98ä»¥é™
 //----------------------------------------------------------------------------------
 #include "pch.h"
 #include <memory>
@@ -61,29 +61,29 @@ std::string	LogFileName()
 //#define NO_REMOTE
 
 //---------------------------------------------------------------------
-//		“ü—Íƒvƒ‰ƒOƒCƒ“\‘¢‘Ì’è‹`
+//		å…¥åŠ›ãƒ—ãƒ©ã‚°ã‚¤ãƒ³æ§‹é€ ä½“å®šç¾©
 //---------------------------------------------------------------------
 INPUT_PLUGIN_TABLE input_plugin_table = {
-	INPUT_PLUGIN_FLAG_VIDEO|INPUT_PLUGIN_FLAG_AUDIO,	//	ƒtƒ‰ƒO
-														//	INPUT_PLUGIN_FLAG_VIDEO	: ‰æ‘œ‚ğƒTƒ|[ƒg‚·‚é
-														//	INPUT_PLUGIN_FLAG_AUDIO	: ‰¹º‚ğƒTƒ|[ƒg‚·‚é
-	"InputPipePlugin",									//	ƒvƒ‰ƒOƒCƒ“‚Ì–¼‘O
-	"any files (*.*)\0*.*\0",							//	“ü—Íƒtƒ@ƒCƒ‹ƒtƒBƒ‹ƒ^
-	"Plugin to bypass lwinput.aui By amate version " PLUGIN_VERSION,		//	ƒvƒ‰ƒOƒCƒ“‚Ìî•ñ
-	func_init,											//	DLLŠJn‚ÉŒÄ‚Î‚ê‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^ (NULL‚È‚çŒÄ‚Î‚ê‚Ü‚¹‚ñ)
-	func_exit,											//	DLLI—¹‚ÉŒÄ‚Î‚ê‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^ (NULL‚È‚çŒÄ‚Î‚ê‚Ü‚¹‚ñ)
-	func_open,											//	“ü—Íƒtƒ@ƒCƒ‹‚ğƒI[ƒvƒ“‚·‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	func_close,											//	“ü—Íƒtƒ@ƒCƒ‹‚ğƒNƒ[ƒY‚·‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	func_info_get,										//	“ü—Íƒtƒ@ƒCƒ‹‚Ìî•ñ‚ğæ“¾‚·‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	func_read_video,									//	‰æ‘œƒf[ƒ^‚ğ“Ç‚İ‚ŞŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	func_read_audio,									//	‰¹ºƒf[ƒ^‚ğ“Ç‚İ‚ŞŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	func_is_keyframe,									//	ƒL[ƒtƒŒ[ƒ€‚©’²‚×‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^ (NULL‚È‚ç‘S‚ÄƒL[ƒtƒŒ[ƒ€)
-	func_config,										//	“ü—Íİ’è‚Ìƒ_ƒCƒAƒƒO‚ğ—v‹‚³‚ê‚½‚ÉŒÄ‚Î‚ê‚éŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^ (NULL‚È‚çŒÄ‚Î‚ê‚Ü‚¹‚ñ)
+	INPUT_PLUGIN_FLAG_VIDEO|INPUT_PLUGIN_FLAG_AUDIO,	//	ãƒ•ãƒ©ã‚°
+														//	INPUT_PLUGIN_FLAG_VIDEO	: ç”»åƒã‚’ã‚µãƒãƒ¼ãƒˆã™ã‚‹
+														//	INPUT_PLUGIN_FLAG_AUDIO	: éŸ³å£°ã‚’ã‚µãƒãƒ¼ãƒˆã™ã‚‹
+	"InputPipePlugin",									//	ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã®åå‰
+	"any files (*.*)\0*.*\0",							//	å…¥åŠ›ãƒ•ã‚¡ã‚¤ãƒ«ãƒ•ã‚£ãƒ«ã‚¿
+	"Plugin to bypass lwinput.aui By amate version " PLUGIN_VERSION,		//	ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã®æƒ…å ±
+	func_init,											//	DLLé–‹å§‹æ™‚ã«å‘¼ã°ã‚Œã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿ (NULLãªã‚‰å‘¼ã°ã‚Œã¾ã›ã‚“)
+	func_exit,											//	DLLçµ‚äº†æ™‚ã«å‘¼ã°ã‚Œã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿ (NULLãªã‚‰å‘¼ã°ã‚Œã¾ã›ã‚“)
+	func_open,											//	å…¥åŠ›ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚ªãƒ¼ãƒ—ãƒ³ã™ã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	func_close,											//	å…¥åŠ›ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚¯ãƒ­ãƒ¼ã‚ºã™ã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	func_info_get,										//	å…¥åŠ›ãƒ•ã‚¡ã‚¤ãƒ«ã®æƒ…å ±ã‚’å–å¾—ã™ã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	func_read_video,									//	ç”»åƒãƒ‡ãƒ¼ã‚¿ã‚’èª­ã¿è¾¼ã‚€é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	func_read_audio,									//	éŸ³å£°ãƒ‡ãƒ¼ã‚¿ã‚’èª­ã¿è¾¼ã‚€é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	func_is_keyframe,									//	ã‚­ãƒ¼ãƒ•ãƒ¬ãƒ¼ãƒ ã‹èª¿ã¹ã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿ (NULLãªã‚‰å…¨ã¦ã‚­ãƒ¼ãƒ•ãƒ¬ãƒ¼ãƒ )
+	func_config,										//	å…¥åŠ›è¨­å®šã®ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã‚’è¦æ±‚ã•ã‚ŒãŸæ™‚ã«å‘¼ã°ã‚Œã‚‹é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿ (NULLãªã‚‰å‘¼ã°ã‚Œã¾ã›ã‚“)
 };
 
 
 //---------------------------------------------------------------------
-//		“ü—Íƒvƒ‰ƒOƒCƒ“\‘¢‘Ì‚Ìƒ|ƒCƒ“ƒ^‚ğ“n‚·ŠÖ”
+//		å…¥åŠ›ãƒ—ãƒ©ã‚°ã‚¤ãƒ³æ§‹é€ ä½“ã®ãƒã‚¤ãƒ³ã‚¿ã‚’æ¸¡ã™é–¢æ•°
 //---------------------------------------------------------------------
 EXTERN_C INPUT_PLUGIN_TABLE __declspec(dllexport) * __stdcall GetInputPluginTable( void )
 {
@@ -107,7 +107,7 @@ EXTERN_C INPUT_PLUGIN_TABLE __declspec(dllexport) * __stdcall GetInputPluginTabl
 
 #if 0
 //---------------------------------------------------------------------
-//		ƒtƒ@ƒCƒ‹ƒnƒ“ƒhƒ‹\‘¢‘Ì
+//		ãƒ•ã‚¡ã‚¤ãƒ«ãƒãƒ³ãƒ‰ãƒ«æ§‹é€ ä½“
 //---------------------------------------------------------------------
 typedef struct {
 	int				flag;
@@ -125,7 +125,7 @@ typedef struct {
 #endif
 
 //---------------------------------------------------------------------
-//		‰Šú‰»
+//		åˆæœŸåŒ–
 //---------------------------------------------------------------------
 BOOL func_init( void )
 {
@@ -158,13 +158,12 @@ BOOL func_init( void )
 	//BOOL b = g_winputPluginTable->func_init();
 	//return b;
 
-	//AVIFileInit();
 	return TRUE;
 }
 
 
 //---------------------------------------------------------------------
-//		I—¹
+//		çµ‚äº†
 //---------------------------------------------------------------------
 BOOL func_exit( void )
 {
@@ -177,13 +176,12 @@ BOOL func_exit( void )
 	//BOOL b = g_winputPluginTable->func_exit();
 	//return b;
 
-	//AVIFileExit();
 	return TRUE;
 }
 
 
 //---------------------------------------------------------------------
-//		ƒtƒ@ƒCƒ‹ƒI[ƒvƒ“
+//		ãƒ•ã‚¡ã‚¤ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³
 //---------------------------------------------------------------------
 INPUT_HANDLE func_open( LPSTR file )
 {
@@ -242,7 +240,7 @@ INPUT_HANDLE func_open( LPSTR file )
 
 
 //---------------------------------------------------------------------
-//		ƒtƒ@ƒCƒ‹ƒNƒ[ƒY
+//		ãƒ•ã‚¡ã‚¤ãƒ«ã‚¯ãƒ­ãƒ¼ã‚º
 //---------------------------------------------------------------------
 BOOL func_close( INPUT_HANDLE ih )
 {
@@ -262,7 +260,7 @@ BOOL func_close( INPUT_HANDLE ih )
 			INFO_LOG << L"Cache refCount : " << refCount << L" -> " << (refCount - 1);
 			--refCount;
 			if (refCount > 0) {
-				return TRUE;		// ‚Ü‚¾Á‚³‚È‚¢I
+				return TRUE;		// ã¾ã æ¶ˆã•ãªã„ï¼
 
 			} else {
 				INFO_LOG << L"Cache delete: " << ih;
@@ -270,12 +268,12 @@ BOOL func_close( INPUT_HANDLE ih )
 			}
 		}
 	}
-	if (m_config.bEnableIPC) {
-		auto itfound = g_mapInputHandleInfoGetData.find(ih);
-		if (itfound != g_mapInputHandleInfoGetData.end()) {
-			g_mapInputHandleInfoGetData.erase(itfound);
-		}
 
+	auto itfound = g_mapInputHandleInfoGetData.find(ih);
+	if (itfound != g_mapInputHandleInfoGetData.end()) {
+		g_mapInputHandleInfoGetData.erase(itfound);
+	}
+	if (m_config.bEnableIPC) {
 		StandardParamPack spp = { ih };
 		auto toData = GenerateToInputData(CallFunc::kClose, spp);
 		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
@@ -297,43 +295,25 @@ BOOL func_close( INPUT_HANDLE ih )
 	BOOL b = g_winputPluginTable->func_close(ih);
 	return b;
 #endif
-#if 0
-	FILE_HANDLE	*fp = (FILE_HANDLE *)ih;
-
-	if( fp ) {
-		if( fp->flag&FILE_HANDLE_FLAG_AUDIO ) {
-			AVIStreamRelease(fp->paudio);
-			GlobalFree(fp->audioformat);
-		}
-		if( fp->flag&FILE_HANDLE_FLAG_VIDEO ) {
-			AVIStreamRelease(fp->pvideo);
-			GlobalFree(fp->videoformat);
-		}
-		AVIFileRelease(fp->pfile);
-		GlobalFree(fp);
-	}
-
-	return TRUE;
-#endif
 }
 
 
 //---------------------------------------------------------------------
-//		ƒtƒ@ƒCƒ‹‚Ìî•ñ
+//		ãƒ•ã‚¡ã‚¤ãƒ«ã®æƒ…å ±
 //---------------------------------------------------------------------
 BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 {
 	INFO_LOG << L"func_info_get";
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
-	if (m_config.bEnableIPC) {
-		auto itfound = g_mapInputHandleInfoGetData.find(ih);
-		if (itfound != g_mapInputHandleInfoGetData.end()) {
-			INFO_LOG << L"InfoGetData cache found!";
-			*iip = *reinterpret_cast<INPUT_INFO*>(itfound->second.get());
-			return TRUE;
-		}
 
+	auto itfound = g_mapInputHandleInfoGetData.find(ih);
+	if (itfound != g_mapInputHandleInfoGetData.end()) {
+		INFO_LOG << L"InfoGetData cache found!";
+		*iip = *reinterpret_cast<INPUT_INFO*>(itfound->second.get());
+		return TRUE;
+	}
+	if (m_config.bEnableIPC) {
 		StandardParamPack spp = { ih };
 		auto toData = GenerateToInputData(CallFunc::kInfoGet, spp);
 		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
@@ -365,43 +345,37 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 			ERROR_LOG << L"func_info_get failed, ih: " << ih;
 		}
 		return retData.first;
+
 	} else {
 		BOOL b = g_winputPluginTable->func_info_get(ih, iip);
+		if (b) {
+			const int infoGetDataSize = sizeof(INPUT_INFO) + iip->format_size + iip->audio_format_size;
+			auto infoGetData = std::make_unique<BYTE[]>(infoGetDataSize);
+			memcpy_s(infoGetData.get(), infoGetDataSize, iip, sizeof(INPUT_INFO));
+
+			auto igData = reinterpret_cast<INPUT_INFO*>(infoGetData.get());			
+			::memcpy_s(infoGetData.get() + sizeof(INPUT_INFO),
+				igData->format_size,
+				igData->format, igData->format_size);
+			::memcpy_s(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size,
+				igData->audio_format_size,
+				igData->audio_format, igData->audio_format_size);
+			igData->format = (BITMAPINFOHEADER*)(infoGetData.get() + sizeof(INPUT_INFO));
+			igData->audio_format = (WAVEFORMATEX*)(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size);
+			g_mapInputHandleInfoGetData.emplace(ih, std::move(infoGetData));
+		}
+
 		return b;
 	}
 #else
 	BOOL b = g_winputPluginTable->func_info_get(ih, iip);
 	return b;
 #endif
-#if 0
-	FILE_HANDLE	*fp = (FILE_HANDLE *)ih;
-
-	iip->flag = 0;
-
-	if( fp->flag&FILE_HANDLE_FLAG_VIDEO ) {
-		iip->flag |= INPUT_INFO_FLAG_VIDEO;
-		iip->rate = fp->videoinfo.dwRate;
-		iip->scale = fp->videoinfo.dwScale;
-		iip->n = fp->videoinfo.dwLength;
-		iip->format = (BITMAPINFOHEADER *)fp->videoformat;
-		iip->format_size = fp->videoformatsize;
-		iip->handler = fp->videoinfo.fccHandler;
-	}
-
-	if( fp->flag&FILE_HANDLE_FLAG_AUDIO ) {
-		iip->flag |= INPUT_INFO_FLAG_AUDIO;
-		iip->audio_n = fp->audioinfo.dwLength;
-		iip->audio_format = (WAVEFORMATEX *)fp->audioformat;
-		iip->audio_format_size = fp->audioformatsize;
-	}
-
-	return TRUE;
-#endif
 }
 
 
 //---------------------------------------------------------------------
-//		‰æ‘œ“Ç‚İ‚İ
+//		ç”»åƒèª­ã¿è¾¼ã¿
 //---------------------------------------------------------------------
 int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 {
@@ -409,82 +383,55 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
-		auto funcIPCReadVideo = [ih, buf](int frame) -> int {
-			const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
+		const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
 
-			StandardParamPack spp = { ih, frame };
-			spp.perBufferSize = OneFrameBufferSize;
-			auto toData = GenerateToInputData(CallFunc::kReadVideo, spp);
-			g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
+		StandardParamPack spp = { ih, frame };
+		spp.perBufferSize = OneFrameBufferSize;
+		auto toData = GenerateToInputData(CallFunc::kReadVideo, spp);
+		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
 
-			std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
-			FromWinputData* fromData = (FromWinputData*)headerData.data();
-			//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
-			assert(fromData->callFunc == CallFunc::kReadVideo);
-			int readBytes = 0;
-			int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
-			assert(nRet == sizeof(readBytes));
-			assert((readBytes + sizeof(int)) == fromData->returnSize);
-			nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
-			assert(nRet == readBytes);
-			return readBytes;
-		};
-		int readBytes = funcIPCReadVideo(frame);
-		if (readBytes == 0) {
-			//INFO_LOG << L"func_read_video" << L" frame: " << frame;
-			//INFO_LOG << L"readBytes == 0 : retry request prevFrame";
-			// ‰æ‘œ‚Ìæ“¾‚É¸”s‚µ‚½‚Ì‚ÅA‘O‚ÌƒtƒŒ[ƒ€‚ğæ“¾‚µ‚Ä–Ú“I‚ÌƒtƒŒ[ƒ€‚Ì¶¬‚ğ‘£‚·
-			int prevFrame = frame - 1;
-			if (prevFrame < 0) {
-				prevFrame = frame + 1;
-			}
-			int prevReadBytes = funcIPCReadVideo(prevFrame);
-			//INFO_LOG << L"prevReadBytes: " << prevReadBytes;
-			readBytes = funcIPCReadVideo(frame);
-			//INFO_LOG << L"readBytes: " << readBytes;
-		}
+		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
+		FromWinputData* fromData = (FromWinputData*)headerData.data();
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		assert(fromData->callFunc == CallFunc::kReadVideo);
+		int readBytes = 0;
+		int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
+		assert(nRet == sizeof(readBytes));
+		assert((readBytes + sizeof(int)) == fromData->returnSize);
+		nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
+		assert(nRet == readBytes);
 		return readBytes;
 
 	} else {
-		int n = g_winputPluginTable->func_read_video(ih, frame, buf);
-		if (n == 0) {
-			// ‰æ‘œ‚Ìæ“¾‚É¸”s‚µ‚½‚Ì‚ÅA‘O‚ÌƒtƒŒ[ƒ€‚ğæ“¾‚µ‚Ä–Ú“I‚ÌƒtƒŒ[ƒ€‚Ì¶¬‚ğ‘£‚·
+		int readBytes = g_winputPluginTable->func_read_video(ih, frame, buf);
+		if (readBytes == 0) {
+			// ç”»åƒã®å–å¾—ã«å¤±æ•—ã—ãŸã®ã§ã€å‰ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã‚’å–å¾—ã—ã¦ç›®çš„ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã®ç”Ÿæˆã‚’ä¿ƒã™
 			int prevFrame = frame - 1;
 			if (prevFrame < 0) {
 				prevFrame = frame + 1;
 			}
 			int prevReadBytes = g_winputPluginTable->func_read_video(ih, prevFrame, buf);
-			int n = g_winputPluginTable->func_read_video(ih, frame, buf);
+			if (prevReadBytes == 0) {
+				assert(false);
+				ERROR_LOG << L"prevReadBytes == 0";
+			}
+			readBytes = g_winputPluginTable->func_read_video(ih, frame, buf);
+			if (readBytes == 0) {
+				assert(false);
+				ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
+			}
 		}
-		return n;
+		return readBytes;
 	}
-#if 0
-	std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
-	auto retData = ParseFromInputData<int>(readBody);
-
-	::memcpy_s(buf, OneFrameBufferSize, retData.second, OneFrameBufferSize);
-	return retData.first;
-#endif
-
 #else
 	int n = g_winputPluginTable->func_read_video(ih, frame, buf);
 	return n;
-#endif
-
-#if 0
-	FILE_HANDLE	*fp = (FILE_HANDLE *)ih;
-	LONG		videosize;
-	LONG		size;
-
-	AVIStreamRead(fp->pvideo,frame,1,NULL,NULL,&videosize,NULL);
-	if( AVIStreamRead(fp->pvideo,frame,1,buf,videosize,&size,NULL) ) return 0;
-	return size;
 #endif
 }
 
 
 //---------------------------------------------------------------------
-//		‰¹º“Ç‚İ‚İ
+//		éŸ³å£°èª­ã¿è¾¼ã¿
 //---------------------------------------------------------------------
 int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 {
@@ -541,7 +488,7 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 
 
 //---------------------------------------------------------------------
-//		ƒL[ƒtƒŒ[ƒ€î•ñ
+//		ã‚­ãƒ¼ãƒ•ãƒ¬ãƒ¼ãƒ æƒ…å ±
 //---------------------------------------------------------------------
 BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 {
@@ -577,7 +524,7 @@ BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 
 
 //---------------------------------------------------------------------
-//		İ’èƒ_ƒCƒAƒƒO
+//		è¨­å®šãƒ€ã‚¤ã‚¢ãƒ­ã‚°
 //---------------------------------------------------------------------
 BOOL func_config( HWND hwnd, HINSTANCE dll_hinst )
 {
@@ -592,9 +539,9 @@ BOOL func_config( HWND hwnd, HINSTANCE dll_hinst )
 	return b;
 #endif
 #if 0
-	MessageBoxA(hwnd,"ƒTƒ“ƒvƒ‹ƒ_ƒCƒAƒƒO","“ü—Íİ’è",MB_OK);
+	MessageBoxA(hwnd,"ã‚µãƒ³ãƒ—ãƒ«ãƒ€ã‚¤ã‚¢ãƒ­ã‚°","å…¥åŠ›è¨­å®š",MB_OK);
 
-	//	DLL‚ğŠJ•ú‚³‚ê‚Ä‚àİ’è‚ªc‚é‚æ‚¤‚É•Û‘¶‚µ‚Ä‚¨‚¢‚Ä‚­‚¾‚³‚¢B
+	//	DLLã‚’é–‹æ”¾ã•ã‚Œã¦ã‚‚è¨­å®šãŒæ®‹ã‚‹ã‚ˆã†ã«ä¿å­˜ã—ã¦ãŠã„ã¦ãã ã•ã„ã€‚
 
 	return TRUE;
 #endif

@@ -172,23 +172,16 @@ int NamedPipe::Read(BYTE* data, const int length)
 		BOOL bSuccess = ::ReadFile(m_hPipe, writeDataPos, restReadBytes, &readyBytes, nullptr);
 		DWORD error = GetLastError();
 		if ((!bSuccess || readyBytes == 0)) {
-			if (error == 0) {
+			if (error == 0) {	// WriteFile で送信されるバイト数が 0 の場合
 				::Sleep(10);
 				continue;
 			}
 
 			if (error == ERROR_BROKEN_PIPE) {
-				//_tprintf(TEXT("InstanceThread: client disconnected.\n"), GetLastError());
 				ERROR_LOG << L"NamedPipe::Read failed: client disconnected.";
 			} else {
-				//_tprintf(TEXT("InstanceThread ReadFile failed, GLE=%d.\n"), GetLastError());
-				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << error << L" [" << GetLastErrorMessage(error) << L"]";
+				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << GetLastErrorMessage(error) << L" [" << error << L"]";
 			}
-			//if (bSuccess && readyBytes == 0) {
-			//	WARN_LOG << L"NamedPipe::Read crazy?";	// なぜだか ReadFile に成功して readBytes が 0 の場合があるらしい...
-			//	::Sleep(10);
-			//	continue;
-			//}
 			assert(false);
 			return totalReadBytes;
 
@@ -208,13 +201,13 @@ void NamedPipe::Write(const BYTE* data, int length)
 		assert(false);
 		return;
 	}
+	assert(length > 0);
 	DWORD writtenSize = 0;
 	BOOL bSuccess = ::WriteFile(m_hPipe, data, length, &writtenSize, nullptr);
 	if (!bSuccess || length != writtenSize) {
 		DWORD error = GetLastError();
 		assert(false);
-		//_tprintf(TEXT("InstanceThread WriteFile failed, GLE=%d.\n"), GetLastError());
-		//break;
+		ERROR_LOG << L"NamedPipe::Write failed: GetLastError: " << GetLastErrorMessage(error)<< L" [" << error << L"]";
 	}
 	//BOOL bFlushSuccess = ::FlushFileBuffers(m_hPipe);
 }

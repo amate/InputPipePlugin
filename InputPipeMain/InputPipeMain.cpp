@@ -210,7 +210,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					g_readVideoBuffer.resize(spp->perBufferSize);
 				}
 				INPUT_INFO inputInfo = {};
+				const int frame = spp->param1;
 				int readBytes = g_winputPluginTable->func_read_video(spp->ih, spp->param1, g_readVideoBuffer.data());
+				if (readBytes == 0) {
+					// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
+					int prevFrame = frame - 1;
+					if (prevFrame < 0) {
+						prevFrame = frame + 1;
+					}
+					int prevReadBytes = g_winputPluginTable->func_read_video(spp->ih, prevFrame, g_readVideoBuffer.data());
+					if (prevReadBytes == 0) {
+						assert(false);
+						ERROR_LOG << L"prevReadBytes == 0";
+					}
+					readBytes = g_winputPluginTable->func_read_video(spp->ih, frame, g_readVideoBuffer.data());
+					if (readBytes == 0) {
+						assert(false);
+						ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
+					}
+				}
 				//INFO_LOG << L"kReadVideo: " << spp->ih;
 
 				namedPipe.Write((const BYTE*)&toData->header.callFunc, sizeof(toData->header.callFunc));
@@ -239,8 +257,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 				namedPipe.Write((const BYTE*)& toData->header.callFunc, sizeof(toData->header.callFunc));
 				std::int32_t totalSize = sizeof(int) + readBufferSize;
-				namedPipe.Write((const BYTE*)& totalSize, sizeof(totalSize));
-				namedPipe.Write((const BYTE*)& readSample, sizeof(readSample));
+				namedPipe.Write((const BYTE*)&totalSize, sizeof(totalSize));
+				namedPipe.Write((const BYTE*)&readSample, sizeof(readSample));
 				namedPipe.Write((const BYTE*)g_readAudioBuffer.data(), readBufferSize);
 				//auto fromData = GenerateFromInputData(toData->header.callFunc, readSample, g_readAudioBuffer.data(), readBufferSize);
 				//namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));

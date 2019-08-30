@@ -24,7 +24,7 @@ BOOL func_config(HWND hwnd, HINSTANCE dll_hinst);
 
 ////////////////////////////////////////////////////////////////
 
-#define		PLUGIN_VERSION	"1.3"
+#define		PLUGIN_VERSION	"1.4"
 
 
 constexpr	int kVideoBufferSurplusBytes = 0x3FF;
