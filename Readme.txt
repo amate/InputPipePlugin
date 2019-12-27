@@ -110,7 +110,7 @@ Boost::Logを使用しているので、事前にライブラリのビルドが�
 Boostライブラリのビルド方法
 https://boostjp.github.io/howtobuild.html
 //コマンドライン
-b2.exe install -j 16 --prefix=lib toolset=msvc-14.2  runtime-link=static --with-log
+b2.exe install -j 16 --prefix=lib toolset=msvc-14.2  runtime-link=static --with-log --with-filesystem
 
 ◆boost
 http://www.boost.org/
@@ -120,6 +120,13 @@ http://sourceforge.net/projects/wtl/
 
 
 ■更新履歴
+v1.5
+・[fix] aviutl起動時に、InputPipePlugin.auiと同じフォルダに lwinput.aui が存在しない場合プロセスが強制終了するのを修正
+・[add] aviutl起動時に、InputPipePlugin.auiと同じフォルダに lwinput.aui が存在しない場合メッセージボックスを表示するようにした
+・[change] プロセス間通信有効時、画像と音声の転送に共有メモリを使用するようにした (6割ほど高速化した)
+・[change] boostを1.72.0へ更新
+・[chagen] std::filesystemからboost::filesystemへ使用ライブラリを変更
+
 v1.4
 ・[change]プロセス間通信有効、func_read_videoで画像の取得に失敗した場合の処理をInputPipePlugin.auiではなく、InputPipeMain.exeで実行するようにした
 ・[add]プロセス間通信無効時でも、func_info_getでキャッシュ情報を返すようにした

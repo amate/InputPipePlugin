@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <random>
 #include <mutex>
+#include <chrono>
 #include <windows.h>
 //#include	<vfw.h>
 //#pragma comment(lib, "Vfw32.lib")
@@ -51,6 +52,10 @@ std::vector<HandleCache>	g_vecHandleCache;
 
 std::mutex	g_mtxIPC;
 
+std::wstring	g_randamString;
+SharedMemory	g_videoSharedMemory;
+SharedMemory	g_audioSharedMemory;
+
 // for Logger
 std::string	LogFileName()
 {
@@ -59,6 +64,8 @@ std::string	LogFileName()
 
 
 //#define NO_REMOTE
+//#define DEBUG_PROCESSINGTIME
+
 
 //---------------------------------------------------------------------
 //		入力プラグイン構造体定義
@@ -91,7 +98,8 @@ EXTERN_C INPUT_PLUGIN_TABLE __declspec(dllexport) * __stdcall GetInputPluginTabl
 	assert(g_hWinputDll);
 	if (g_hWinputDll == NULL) {
 		WARN_LOG << L"lwinput.aui not found";
-		return nullptr;
+		MessageBox(NULL, L"同じフォルダ内に lwinput.aui が存在しません\nlwinput.aui が存在するフォルダに  InputPipePlugin.aui と InputPipeMain.exe をコピーしてください", L"InputPipePluginエラー", MB_ICONERROR);
+		return &input_plugin_table;
 	}
 
 	using GetInputPluginTableFunc = INPUT_PLUGIN_TABLE * (__stdcall*)(void);
@@ -131,29 +139,44 @@ BOOL func_init( void )
 {
 	INFO_LOG << L"func_init";
 
+	if (g_hWinputDll == NULL) {
+		return FALSE;
+	}
+
 	m_config.LoadConfig();
+	m_config.bUseSharedMemory = true;
 
 	if (m_config.bEnableIPC) {
 		INFO_LOG << "EnableIPC";
 
-		enum { kRandamStrLength = 64 };
+		enum { kRandamStrLength = 32 };
 		std::random_device  randdev;
 		WCHAR tempstr[] = L"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		std::uniform_int_distribution<int> dist(0, std::size(tempstr) - 1);
+		std::uniform_int_distribution<int> dist(0, std::size(tempstr) - 2);
 		std::wstring randamString = L"_";
 		for (int i = 0; i < kRandamStrLength; ++i) {
 			randamString += tempstr[dist(randdev)];
 		}
+		randamString += L"_";
 		std::wstring pipeName = std::wstring(kPipeName) + randamString;
 		bool ret = g_namedPipe.CreateNamedPipe(pipeName);
 		// INFO_LOG << L"CreateNamedPipe: " << pipeName << L" ret: " << ret;
 
 		auto InputPipeMainPath = GetExeDirectory() / L"InputPipeMain.exe";
 
-		bool startRet = g_bindProcess.StartProcess(InputPipeMainPath.native(), pipeName);
+		std::wstring commandLine = pipeName;
+		if (m_config.bUseSharedMemory) {
+			g_randamString = randamString;
+			commandLine += L" -sharedMemory";
+		}
+		bool startRet = g_bindProcess.StartProcess(InputPipeMainPath.native(), commandLine);
 		// INFO_LOG << L"StartProcess: " << L" ret: " << startRet;
 
-		g_namedPipe.ConnectNamedPipe();
+		if (!g_namedPipe.ConnectNamedPipe()) {
+			ERROR_LOG << L"ConnectNamedPipe failed";
+			MessageBox(NULL, L"名前付きパイプへの接続が失敗しました", L"InputPipePluginエラー", MB_ICONERROR);
+			return FALSE;
+		}
 	}
 	//BOOL b = g_winputPluginTable->func_init();
 	//return b;
@@ -169,7 +192,14 @@ BOOL func_exit( void )
 {
 	INFO_LOG << L"func_exit";
 
+	if (g_hWinputDll == NULL) {
+		return FALSE;
+	}
+
 	if (m_config.bEnableIPC) {
+		g_videoSharedMemory.CloseHandle();
+		g_audioSharedMemory.CloseHandle();
+
 		g_namedPipe.Disconnect();
 		g_bindProcess.StopProcess();
 	}
@@ -186,6 +216,11 @@ BOOL func_exit( void )
 INPUT_HANDLE func_open( LPSTR file )
 {
 	INFO_LOG << L"func_open: " << CodeConvert::UTF16fromShiftJIS(file);
+
+	if (g_hWinputDll == NULL) {
+		return nullptr;
+	}
+
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
 #ifndef NO_REMOTE
@@ -373,7 +408,6 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 #endif
 }
 
-
 //---------------------------------------------------------------------
 //		画像読み込み
 //---------------------------------------------------------------------
@@ -381,6 +415,11 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 {
 	//INFO_LOG << L"func_read_video" << L" frame: " << frame;
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
+
+#ifdef DEBUG_PROCESSINGTIME
+	auto startTime = std::chrono::high_resolution_clock::now();
+#endif
+
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
 		const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
@@ -398,8 +437,46 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 		int nRet = g_namedPipe.Read((BYTE*)& readBytes, sizeof(readBytes));
 		assert(nRet == sizeof(readBytes));
 		assert((readBytes + sizeof(int)) == fromData->returnSize);
-		nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
-		assert(nRet == readBytes);
+		if (m_config.bUseSharedMemory) {
+			void* sharedBufferView;
+			bool sharedMemoryReopen = false;
+			g_namedPipe.Read((BYTE*)&sharedMemoryReopen, sizeof(sharedMemoryReopen));
+			if (sharedMemoryReopen) {
+				g_videoSharedMemory.CloseHandle();
+				std::wstring sharedMemoryName = kVideoSharedMemoryPrefix + g_randamString + std::to_wstring(spp.perBufferSize);
+				sharedBufferView = g_videoSharedMemory.OpenSharedMemory(sharedMemoryName.c_str(), true);
+				assert(sharedBufferView);
+			} else {
+				sharedBufferView = g_videoSharedMemory.GetPointer();
+			}
+			memcpy_s(buf, readBytes, sharedBufferView, readBytes);
+		} else {
+			nRet = g_namedPipe.Read((BYTE*)buf, readBytes);
+			assert(nRet == readBytes);
+		}
+
+#ifdef DEBUG_PROCESSINGTIME	// 処理時間計測
+		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
+		static bool firstSkip = true;
+
+		static std::vector<long long> processingTimes;
+		enum { kMaxTime = 100 };
+		if (!firstSkip) {
+			processingTimes.emplace_back(processingTime);
+			if (processingTimes.size() == kMaxTime) {
+				long long avgTime = 0;
+				for (auto time : processingTimes) {
+					avgTime += time;
+				}
+				avgTime /= 100;
+				WARN_LOG << L"processingTime : " << processingTime << L"µs avg: " << avgTime << L"µs";
+				processingTimes.clear();
+			}
+		} else {
+			firstSkip = false;
+			processingTimes.reserve(kMaxTime);
+		}
+#endif
 		return readBytes;
 
 	} else {
@@ -413,7 +490,7 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 			int prevReadBytes = g_winputPluginTable->func_read_video(ih, prevFrame, buf);
 			if (prevReadBytes == 0) {
 				assert(false);
-				ERROR_LOG << L"prevReadBytes == 0";
+				//ERROR_LOG << L"prevReadBytes == 0";
 			}
 			readBytes = g_winputPluginTable->func_read_video(ih, frame, buf);
 			if (readBytes == 0) {
@@ -421,6 +498,29 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 				ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
 			}
 		}
+
+#ifdef DEBUG_PROCESSINGTIME 	// 処理時間計測
+		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
+		static bool firstSkip = true;
+
+		static std::vector<long long> processingTimes;
+		enum { kMaxTime = 100 };
+		if (!firstSkip) {
+			processingTimes.emplace_back(processingTime);
+			if (processingTimes.size() == kMaxTime) {
+				long long avgTime = 0;
+				for (auto time : processingTimes) {
+					avgTime += time;
+				}
+				avgTime /= 100;
+				WARN_LOG << L"processingTime : " << processingTime << L"µs avg: " << avgTime << L"µs";
+				processingTimes.clear();
+			}
+		} else {
+			firstSkip = false;
+			processingTimes.reserve(kMaxTime);
+		}
+#endif
 		return readBytes;
 	}
 #else
@@ -429,6 +529,7 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 #endif
 }
 
+#undef DEBUG_PROCESSINGTIME
 
 //---------------------------------------------------------------------
 //		音声読み込み
@@ -437,6 +538,10 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 {
 	//INFO_LOG << L"func_read_audio: " << ih << L" start: " << start << L" length: " << length;
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
+
+#ifdef DEBUG_PROCESSINGTIME
+	auto startTime = std::chrono::high_resolution_clock::now();
+#endif
 
 #ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
@@ -455,11 +560,71 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 		assert(nRet == sizeof(readSample));
 		const int audioBufferSize = fromData->returnSize - sizeof(int);
 		assert(audioBufferSize >= 0);
-		nRet = g_namedPipe.Read((BYTE*)buf, audioBufferSize);
-		assert(nRet == audioBufferSize);
+		if (m_config.bUseSharedMemory) {
+			void* sharedBufferView;
+			bool sharedMemoryReopen = false;
+			g_namedPipe.Read((BYTE*)&sharedMemoryReopen, sizeof(sharedMemoryReopen));
+			if (sharedMemoryReopen) {
+				g_audioSharedMemory.CloseHandle();
+				std::wstring sharedMemoryName = kAudioSharedMemoryPrefix + g_randamString + std::to_wstring(audioBufferSize);
+				sharedBufferView = g_audioSharedMemory.OpenSharedMemory(sharedMemoryName.c_str(), true);
+				assert(sharedBufferView);
+			} else {
+				sharedBufferView = g_audioSharedMemory.GetPointer();
+			}
+			memcpy_s(buf, audioBufferSize, sharedBufferView, audioBufferSize);
+		} else {
+			nRet = g_namedPipe.Read((BYTE*)buf, audioBufferSize);
+			assert(nRet == audioBufferSize);
+		}
+
+#ifdef DEBUG_PROCESSINGTIME	// 処理時間計測
+		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
+		static bool firstSkip = true;
+
+		static std::vector<long long> processingTimes;
+		enum { kMaxTime = 100 };
+		if (!firstSkip) {
+			processingTimes.emplace_back(processingTime);
+			if (processingTimes.size() == kMaxTime) {
+				long long avgTime = 0;
+				for (auto time : processingTimes) {
+					avgTime += time;
+				}
+				avgTime /= 100;
+				WARN_LOG << L"processingTime : " << processingTime << L"µs avg: " << avgTime << L"µs";
+				processingTimes.clear();
+			}
+		} else {
+			firstSkip = false;
+			processingTimes.reserve(kMaxTime);
+		}
+#endif
 		return readSample;
 	} else {
 		int n = g_winputPluginTable->func_read_audio(ih, start, length, buf);
+#ifdef DEBUG_PROCESSINGTIME	// 処理時間計測
+		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
+		static bool firstSkip = true;
+
+		static std::vector<long long> processingTimes;
+		enum { kMaxTime = 100 };
+		if (!firstSkip) {
+			processingTimes.emplace_back(processingTime);
+			if (processingTimes.size() == kMaxTime) {
+				long long avgTime = 0;
+				for (auto time : processingTimes) {
+					avgTime += time;
+				}
+				avgTime /= 100;
+				WARN_LOG << L"processingTime : " << processingTime << L"µs avg: " << avgTime << L"µs";
+				processingTimes.clear();
+	}
+} else {
+			firstSkip = false;
+			processingTimes.reserve(kMaxTime);
+		}
+#endif
 		return n;
 	}
 #if 0

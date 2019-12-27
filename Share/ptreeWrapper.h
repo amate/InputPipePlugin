@@ -7,12 +7,12 @@
 #include <fstream>
 #include <sstream>
 #include <codecvt>
-#include <filesystem>
+#include <boost\filesystem.hpp>
 #include <boost\property_tree\ptree.hpp>
 #include <boost\property_tree\xml_parser.hpp>
 #include <boost\property_tree\ini_parser.hpp>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = boost::filesystem;
 fs::path GetExeDirectory();
 
 
@@ -26,7 +26,7 @@ public:
 		wptree pt;
 
 		fs::path filterPath = GetExeDirectory() / fileName;
-		std::wifstream	fs(filterPath);
+		std::wifstream	fs(filterPath.wstring());
 		if (!fs) {
 			return pt;
 		}
@@ -43,7 +43,7 @@ public:
 	static bool SaveIniPtree(const std::string& fileName, const wptree& pt)
 	{
 		fs::path filterPath = GetExeDirectory() / fileName;
-		std::wofstream	fs(filterPath);
+		std::wofstream	fs(filterPath.wstring());
 		if (!fs)
 			return false;
 		fs.imbue(std::locale(std::locale(), new std::codecvt_utf8_utf16<wchar_t>));

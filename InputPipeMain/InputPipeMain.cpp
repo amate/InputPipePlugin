@@ -100,7 +100,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	size_t spacePos = cmdLine.find(L' ');
 	// INFO_LOG << L"spacePos: " << spacePos;
 	assert(spacePos != std::wstring::npos);
-	const std::wstring pipeName = cmdLine.substr(spacePos + 1);
+	std::wstring pipeName = cmdLine.substr(spacePos + 1);
+	size_t tailSpacePos = pipeName.find(L' ');
+	if (tailSpacePos != std::wstring::npos) {
+		pipeName.resize(tailSpacePos);
+	}
 
 	std::wstring kJobName = L"InputPipePlugin_Job" + std::to_wstring((uint64_t)hEvent);
 	HANDLE hJob = ::OpenJobObject(JOB_OBJECT_ASSIGN_PROCESS, FALSE, kJobName.c_str());
@@ -126,6 +130,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 #endif
+
+	std::wstring randomString;
+	SharedMemory	videoSharedMemory;
+	SharedMemory	audioSharedMemory;
+	std::pair<void*, int>	videoSharedBuffer = { nullptr, 0 };
+	std::pair<void*, int>	audioSharedBuffer = { nullptr, 0 };
+	bool bUseSharedMemory = false;
+	if (cmdLine.find(L"-sharedMemory") != std::wstring::npos) {
+		bUseSharedMemory = true;
+
+		auto randPos = cmdLine.find(L'_');
+		assert(randPos != std::wstring::npos);
+		auto randPosEnd = cmdLine.find(L'_', randPos + 1);
+		assert(randPosEnd != std::wstring::npos);
+		randomString = cmdLine.substr(randPos, randPosEnd - randPos + 1);
+	}
+
+
 	// TODO: ここにコードを挿入してください。
 	//InitHook();
 	NamedPipe namedPipe;
@@ -206,12 +228,26 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			case CallFunc::kReadVideo:
 			{
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
-				if (static_cast<int>(g_readVideoBuffer.size()) < spp->perBufferSize) {
-					g_readVideoBuffer.resize(spp->perBufferSize);
+				void* buf;
+				bool sharedMemoryReopen = false;
+				if (bUseSharedMemory) {
+					if (videoSharedBuffer.second < spp->perBufferSize) {
+						videoSharedMemory.CloseHandle();
+						std::wstring sharedMemoryName = kVideoSharedMemoryPrefix + randomString + std::to_wstring(spp->perBufferSize);
+						videoSharedBuffer.first = videoSharedMemory.CreateSharedMemory(sharedMemoryName.c_str(), spp->perBufferSize);
+						videoSharedBuffer.second = spp->perBufferSize;
+						sharedMemoryReopen = true;
+					}
+					buf = videoSharedBuffer.first;
+				} else {
+					if (static_cast<int>(g_readVideoBuffer.size()) < spp->perBufferSize) {
+						g_readVideoBuffer.resize(spp->perBufferSize);
+					}
+					buf = g_readVideoBuffer.data();
 				}
 				INPUT_INFO inputInfo = {};
 				const int frame = spp->param1;
-				int readBytes = g_winputPluginTable->func_read_video(spp->ih, spp->param1, g_readVideoBuffer.data());
+				int readBytes = g_winputPluginTable->func_read_video(spp->ih, spp->param1, buf);
 				if (readBytes == 0) {
 					// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
 					int prevFrame = frame - 1;
@@ -221,7 +257,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					int prevReadBytes = g_winputPluginTable->func_read_video(spp->ih, prevFrame, g_readVideoBuffer.data());
 					if (prevReadBytes == 0) {
 						assert(false);
-						ERROR_LOG << L"prevReadBytes == 0";
+						//ERROR_LOG << L"prevReadBytes == 0";
 					}
 					readBytes = g_winputPluginTable->func_read_video(spp->ih, frame, g_readVideoBuffer.data());
 					if (readBytes == 0) {
@@ -235,7 +271,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				std::int32_t totalSize = sizeof(int) + readBytes;
 				namedPipe.Write((const BYTE*)&totalSize, sizeof(totalSize));
 				namedPipe.Write((const BYTE*)&readBytes, sizeof(readBytes));
-				namedPipe.Write((const BYTE*)g_readVideoBuffer.data(), readBytes);
+				if (bUseSharedMemory) {
+					namedPipe.Write((const BYTE*)&sharedMemoryReopen, sizeof(sharedMemoryReopen));
+				} else {
+					namedPipe.Write((const BYTE*)g_readVideoBuffer.data(), readBytes);
+				}
 				//auto fromData = GenerateFromInputData(toData->header.callFunc, readBytes, g_readVideoBuffer.data(), readBytes);
 				//namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
 				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
@@ -247,10 +287,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				const int PerAudioSampleBufferSize = spp->perBufferSize;
 				const int requestReadBytes = PerAudioSampleBufferSize * spp->param2;
-				if (static_cast<int>(g_readAudioBuffer.size()) < requestReadBytes) {
-					g_readAudioBuffer.resize(requestReadBytes);
+				void* buf;
+				bool sharedMemoryReopen = false;
+				if (bUseSharedMemory) {
+					if (audioSharedBuffer.second < requestReadBytes) {
+						audioSharedMemory.CloseHandle();
+						std::wstring sharedMemoryName = kAudioSharedMemoryPrefix + randomString + std::to_wstring(requestReadBytes);
+						audioSharedBuffer.first = audioSharedMemory.CreateSharedMemory(sharedMemoryName.c_str(), requestReadBytes);
+						audioSharedBuffer.second = requestReadBytes;
+						sharedMemoryReopen = true;
+					}
+					buf = audioSharedBuffer.first;
+				} else {
+					if (static_cast<int>(g_readAudioBuffer.size()) < requestReadBytes) {
+						g_readAudioBuffer.resize(requestReadBytes);
+					}
+					buf = g_readAudioBuffer.data();
 				}
-				int readSample = g_winputPluginTable->func_read_audio(spp->ih, spp->param1, spp->param2, g_readAudioBuffer.data());
+
+				int readSample = g_winputPluginTable->func_read_audio(spp->ih, spp->param1, spp->param2, buf);
 				assert(readSample > 0);
 				//INFO_LOG << L"kReadAudio: " << spp->ih << L" readSample: " << readSample;
 				const int readBufferSize = PerAudioSampleBufferSize * readSample;
@@ -259,7 +314,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				std::int32_t totalSize = sizeof(int) + readBufferSize;
 				namedPipe.Write((const BYTE*)&totalSize, sizeof(totalSize));
 				namedPipe.Write((const BYTE*)&readSample, sizeof(readSample));
-				namedPipe.Write((const BYTE*)g_readAudioBuffer.data(), readBufferSize);
+				if (bUseSharedMemory) {
+					namedPipe.Write((const BYTE*)&sharedMemoryReopen, sizeof(sharedMemoryReopen));
+				} else {
+					namedPipe.Write((const BYTE*)g_readAudioBuffer.data(), readBufferSize);
+				}
 				//auto fromData = GenerateFromInputData(toData->header.callFunc, readSample, g_readAudioBuffer.data(), readBufferSize);
 				//namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
 				//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";

@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
-#include <filesystem>
+#include <boost\filesystem.hpp>
 
 #include "..\InputPipePlugin\input.h"
 
@@ -24,14 +24,17 @@ BOOL func_config(HWND hwnd, HINSTANCE dll_hinst);
 
 ////////////////////////////////////////////////////////////////
 
-#define		PLUGIN_VERSION	"1.4"
+#define		PLUGIN_VERSION	"1.5"
 
 
 constexpr	int kVideoBufferSurplusBytes = 0x3FF;
 
+constexpr LPCWSTR kVideoSharedMemoryPrefix = L"InputPipePluginVideo_";
+constexpr LPCWSTR kAudioSharedMemoryPrefix = L"InputPipePluginAudio_";
+
 ////////////////////////////////////////////////////////////////
 
-namespace fs = std::experimental::filesystem;
+namespace fs = boost::filesystem;
 extern HMODULE g_hModule;
 
 /// 現在実行中の exeのあるフォルダのパスを返す
@@ -45,6 +48,7 @@ struct Config
 {
 	bool	bEnableHandleCache;
 	bool	bEnableIPC;
+	bool	bUseSharedMemory;
 
 	bool	LoadConfig();
 	bool	SaveConfig();
