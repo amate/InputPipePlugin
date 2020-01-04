@@ -144,7 +144,7 @@ BOOL func_init( void )
 	}
 
 	m_config.LoadConfig();
-	m_config.bUseSharedMemory = true;
+	//m_config.bUseSharedMemory = true;
 
 	if (m_config.bEnableIPC) {
 		INFO_LOG << "EnableIPC";
@@ -446,6 +446,12 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 				std::wstring sharedMemoryName = kVideoSharedMemoryPrefix + g_randamString + std::to_wstring(spp.perBufferSize);
 				sharedBufferView = g_videoSharedMemory.OpenSharedMemory(sharedMemoryName.c_str(), true);
 				assert(sharedBufferView);
+				if (!sharedBufferView) {
+					DWORD error = ::GetLastError();
+					std::wstring errorMsg = L"g_videoSharedMemory.OpenSharedMemoryに失敗\nsharedMemoryName: " + sharedMemoryName + L"\nGetLastError: " + std::to_wstring(error);
+					MessageBox(NULL, errorMsg.c_str(), L"InputPipePluginエラー", MB_ICONERROR);
+					return 0;
+				}
 			} else {
 				sharedBufferView = g_videoSharedMemory.GetPointer();
 			}
@@ -568,6 +574,12 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 				g_audioSharedMemory.CloseHandle();
 				std::wstring sharedMemoryName = kAudioSharedMemoryPrefix + g_randamString + std::to_wstring(audioBufferSize);
 				sharedBufferView = g_audioSharedMemory.OpenSharedMemory(sharedMemoryName.c_str(), true);
+				if (!sharedBufferView) {
+					DWORD error = ::GetLastError();
+					std::wstring errorMsg = L"g_audioSharedMemory.OpenSharedMemoryに失敗\nsharedMemoryName: " + sharedMemoryName + L"\nGetLastError: " + std::to_wstring(error);
+					MessageBox(NULL, errorMsg.c_str(), L"InputPipePluginエラー", MB_ICONERROR);
+					return 0;
+				}
 				assert(sharedBufferView);
 			} else {
 				sharedBufferView = g_audioSharedMemory.GetPointer();

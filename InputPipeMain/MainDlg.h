@@ -42,6 +42,7 @@ public:
 	BEGIN_DDX_MAP(CMainDlg)
 		DDX_CHECK(IDC_CHECK_ENABLE_HANDLECACHE, m_config.bEnableHandleCache)
 		DDX_CHECK(IDC_CHECK_ENABLE_IPC, m_config.bEnableIPC)
+		DDX_RADIO(IDC_RADIO_NAMEDPIPE, m_radioNamedPipeOrSharedMemory);
 	END_DDX_MAP()
 
 	BEGIN_MSG_MAP_EX(CMainDlg)
@@ -66,6 +67,7 @@ public:
 
 private:
 	Config	m_config;
+	int		m_radioNamedPipeOrSharedMemory;
 };
 
 

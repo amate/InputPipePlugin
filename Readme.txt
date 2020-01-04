@@ -72,7 +72,7 @@ InputPipePluginConfig.ini を削除してください
 https://ws.formzu.net/fgen/S37403840/
  
 ■著作権表示
-Copyright (C) 2019 amate
+Copyright (C) 2019-2020 amate
 
 私が書いた部分のソースコードは、MIT License とします。
 
@@ -120,6 +120,12 @@ http://sourceforge.net/projects/wtl/
 
 
 ■更新履歴
+v1.6
+・[change]設定で内部データの交換方式を選択できるようにした(デフォルトを名前付きパイプへ変更)
+共有メモリだと落ちる場合があるらしいが、再現しないのでエラーが起こりそうな場所にメッセージボックスを埋め込んどいた
+・[fix]InputPipeMain.exeがboost::logに依存しないようにした
+アンチウィルスがうるさいらしいのでその対策
+
 v1.5
 ・[fix] aviutl起動時に、InputPipePlugin.auiと同じフォルダに lwinput.aui が存在しない場合プロセスが強制終了するのを修正
 ・[add] aviutl起動時に、InputPipePlugin.auiと同じフォルダに lwinput.aui が存在しない場合メッセージボックスを表示するようにした

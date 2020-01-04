@@ -3,7 +3,7 @@
 #include <memory>
 #include <atldef.h>
 #include <assert.h>
-#include "Logger.h"
+//#include "Logger.h"
 
 
 std::wstring GetLastErrorMessage(DWORD error)
@@ -178,9 +178,9 @@ int NamedPipe::Read(BYTE* data, const int length)
 			}
 
 			if (error == ERROR_BROKEN_PIPE) {
-				ERROR_LOG << L"NamedPipe::Read failed: client disconnected.";
+				//ERROR_LOG << L"NamedPipe::Read failed: client disconnected.";
 			} else {
-				ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << GetLastErrorMessage(error) << L" [" << error << L"]";
+				//ERROR_LOG << L"NamedPipe::Read failed: GetLastError: " << GetLastErrorMessage(error) << L" [" << error << L"]";
 			}
 			assert(false);
 			return totalReadBytes;
@@ -207,7 +207,7 @@ void NamedPipe::Write(const BYTE* data, int length)
 	if (!bSuccess || length != writtenSize) {
 		DWORD error = GetLastError();
 		assert(false);
-		ERROR_LOG << L"NamedPipe::Write failed: GetLastError: " << GetLastErrorMessage(error)<< L" [" << error << L"]";
+		//ERROR_LOG << L"NamedPipe::Write failed: GetLastError: " << GetLastErrorMessage(error)<< L" [" << error << L"]";
 	}
 	//BOOL bFlushSuccess = ::FlushFileBuffers(m_hPipe);
 }

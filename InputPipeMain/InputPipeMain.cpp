@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <assert.h>
 #include "..\Share\IPC.h"
-#include "..\Share\Logger.h"
+//#include "..\Share\Logger.h"
 #include "..\Share\Common.h"
 #include "..\InputPipePlugin\input.h"
 #include "MainDlg.h"
@@ -119,7 +119,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		g_hWinputDll = ::LoadLibrary((GetExeDirectory() /L"lwinput.aui").c_str());
 		assert(g_hWinputDll);
 		if (g_hWinputDll == NULL) {
-			WARN_LOG << L"LoadLibrary failed (lwinput.aui)";
+			//WARN_LOG << L"LoadLibrary failed (lwinput.aui)";
 			return 0;
 		}
 
@@ -158,7 +158,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	// for Debug
 	CallFunc	lastCallFunc;
-
 	for (;;) {
 		std::vector<BYTE> readData = namedPipe.Read(kToWindDataHeaderSize);
 		if (readData.size() == 0) {
@@ -174,7 +173,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			{
 				LPSTR file = (LPSTR)dataBody.data();
 				INPUT_HANDLE ih = g_winputPluginTable->func_open(file);
-				INFO_LOG << L"kOpen: " << ih;
+				//INFO_LOG << L"kOpen: " << ih;
 
 				auto fromData = GenerateFromInputData(CallFunc::kOpen, ih, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
@@ -186,7 +185,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			{
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				BOOL b = g_winputPluginTable->func_close(spp->ih);
-				INFO_LOG << L"kClose: " << spp->ih;
+				//INFO_LOG << L"kClose: " << spp->ih;
 
 				auto fromData = GenerateFromInputData(CallFunc::kClose, b, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
@@ -201,7 +200,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				INPUT_INFO inputInfo = {};
 				BOOL b = g_winputPluginTable->func_info_get(spp->ih, &inputInfo);
 				assert(b);
-				INFO_LOG << L"kInfoGet: " << spp->ih;
+				//INFO_LOG << L"kInfoGet: " << spp->ih;
 				if (b) {
 					int totalInputInfoSize = sizeof(INPUT_INFO) + inputInfo.format_size + inputInfo.audio_format_size;
 					std::vector<BYTE> entireInputInfo(totalInputInfoSize);
@@ -235,6 +234,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 						videoSharedMemory.CloseHandle();
 						std::wstring sharedMemoryName = kVideoSharedMemoryPrefix + randomString + std::to_wstring(spp->perBufferSize);
 						videoSharedBuffer.first = videoSharedMemory.CreateSharedMemory(sharedMemoryName.c_str(), spp->perBufferSize);
+						if (!videoSharedBuffer.first) {
+							DWORD error = ::GetLastError();
+							std::wstring errorMsg = L"videoSharedMemory.CreateSharedMemoryに失敗\nsharedMemoryName: " + sharedMemoryName + L"\nGetLastError: " + std::to_wstring(error);
+							MessageBox(NULL, errorMsg.c_str(), L"InputPipeMainエラー", MB_ICONERROR);;
+						}
 						videoSharedBuffer.second = spp->perBufferSize;
 						sharedMemoryReopen = true;
 					}
@@ -262,7 +266,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					readBytes = g_winputPluginTable->func_read_video(spp->ih, frame, g_readVideoBuffer.data());
 					if (readBytes == 0) {
 						assert(false);
-						ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
+						//ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
 					}
 				}
 				//INFO_LOG << L"kReadVideo: " << spp->ih;
@@ -294,6 +298,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 						audioSharedMemory.CloseHandle();
 						std::wstring sharedMemoryName = kAudioSharedMemoryPrefix + randomString + std::to_wstring(requestReadBytes);
 						audioSharedBuffer.first = audioSharedMemory.CreateSharedMemory(sharedMemoryName.c_str(), requestReadBytes);
+						if (!audioSharedBuffer.first) {
+							DWORD error = ::GetLastError();
+							std::wstring errorMsg = L"audioSharedMemory.CreateSharedMemoryに失敗\nsharedMemoryName: " + sharedMemoryName + L"\nGetLastError: " + std::to_wstring(error);
+							MessageBox(NULL, errorMsg.c_str(), L"InputPipeMainエラー", MB_ICONERROR);;
+						}
 						audioSharedBuffer.second = requestReadBytes;
 						sharedMemoryReopen = true;
 					}
@@ -327,7 +336,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 			case CallFunc::kIsKeyframe:
 			{
-				INFO_LOG << L"kIsKeyframe";
+				//INFO_LOG << L"kIsKeyframe";
 
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				BOOL b = g_winputPluginTable->func_is_keyframe(spp->ih, spp->param1);
@@ -350,7 +359,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		}
 
 	};
-
 	::FreeLibrary(g_hWinputDll);
 	g_hWinputDll = NULL;
 
@@ -367,6 +375,5 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 }
 #endif
 	return 0;
-
 }
 

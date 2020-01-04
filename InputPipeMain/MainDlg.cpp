@@ -20,6 +20,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	//
 	m_config.LoadConfig();
+	m_radioNamedPipeOrSharedMemory = m_config.bUseSharedMemory ? 1 : 0;
 	DoDataExchange(DDX_LOAD);
 
 	return TRUE;
@@ -45,6 +46,8 @@ LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /
 		MessageBox(L"少なくとも、どちらか一方にチェックを入れてください。");
 		return 0;
 	}
+	m_config.bUseSharedMemory = m_radioNamedPipeOrSharedMemory == 1 ? true : false;
+
 	m_config.SaveConfig();
 
 	CloseDialog(0);
