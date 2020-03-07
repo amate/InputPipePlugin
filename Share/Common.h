@@ -24,7 +24,7 @@ BOOL func_config(HWND hwnd, HINSTANCE dll_hinst);
 
 ////////////////////////////////////////////////////////////////
 
-#define		PLUGIN_VERSION	"1.6"
+#define		PLUGIN_VERSION	"1.7"
 
 
 constexpr	int kVideoBufferSurplusBytes = 0x3FF;
@@ -40,6 +40,8 @@ extern HMODULE g_hModule;
 /// 現在実行中の exeのあるフォルダのパスを返す
 fs::path GetExeDirectory();
 
+std::wstring GetLastErrorString(DWORD errorcode = GetLastError());
+
 ////////////////////////////////////////////////////////////////
 
 constexpr LPCSTR	kConfigFileName = "InputPipePluginConfig.ini";
@@ -53,6 +55,16 @@ struct Config
 	bool	LoadConfig();
 	bool	SaveConfig();
 };
+
+////////////////////////////////////////////////////////////////
+
+inline int CalcTotalInputInfoSize(INPUT_INFO* iip) { 
+	return sizeof(INPUT_INFO) + iip->format_size + iip->audio_format_size;
+}
+
+std::unique_ptr<BYTE[]> SerializeInputInfo(INPUT_INFO* iip);
+
+std::unique_ptr<BYTE[]> DeserializeInputInfo(const BYTE* serializedData, INPUT_INFO* iip);
 
 ////////////////////////////////////////////////////////////////
 

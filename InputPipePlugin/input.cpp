@@ -24,6 +24,7 @@
 #include "..\Share\IPC.h"
 #include "..\Share\Common.h"
 #include "..\Share\CodeConvert.h"
+#include "..\Share\PluginWrapper.h"
 
 extern HMODULE g_hModule;
 HMODULE	g_hWinputDll = NULL;
@@ -63,9 +64,17 @@ std::string	LogFileName()
 }
 
 
-//#define NO_REMOTE
 //#define DEBUG_PROCESSINGTIME
 
+void DisconnectPipeAndStopProcess()
+{
+	StandardParamPack spp = {};
+	auto toData = GenerateToInputData(CallFunc::kExit, spp);
+	g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
+
+	g_namedPipe.Disconnect();
+	g_bindProcess.StopProcess();
+}
 
 //---------------------------------------------------------------------
 //		入力プラグイン構造体定義
@@ -160,7 +169,13 @@ BOOL func_init( void )
 		randamString += L"_";
 		std::wstring pipeName = std::wstring(kPipeName) + randamString;
 		bool ret = g_namedPipe.CreateNamedPipe(pipeName);
-		// INFO_LOG << L"CreateNamedPipe: " << pipeName << L" ret: " << ret;
+		INFO_LOG << L"CreateNamedPipe: " << pipeName << L" ret: " << ret;
+		if (!ret) {
+			ERROR_LOG << L"CreateNamedPipe failed - GetLastError: " << GetLastErrorString();
+			WARN_LOG << L"エラーが発生したのでIPCを無効化します";
+			m_config.bEnableIPC = false;
+			return TRUE;
+		}
 
 		auto InputPipeMainPath = GetExeDirectory() / L"InputPipeMain.exe";
 
@@ -171,16 +186,22 @@ BOOL func_init( void )
 		}
 		bool startRet = g_bindProcess.StartProcess(InputPipeMainPath.native(), commandLine);
 		// INFO_LOG << L"StartProcess: " << L" ret: " << startRet;
+		if (!startRet) {
+			ERROR_LOG << L"g_bindProcess.StartProcess(InputPipeMainPath failed - GetLastError: " << GetLastErrorString();
+			WARN_LOG << L"エラーが発生したのでIPCを無効化します";
+			DisconnectPipeAndStopProcess();
+			m_config.bEnableIPC = false;
+			return TRUE;
+		}
 
 		if (!g_namedPipe.ConnectNamedPipe()) {
-			ERROR_LOG << L"ConnectNamedPipe failed";
-			MessageBox(NULL, L"名前付きパイプへの接続が失敗しました", L"InputPipePluginエラー", MB_ICONERROR);
-			return FALSE;
+			ERROR_LOG << L"ConnectNamedPipe failed - GetLastError: " << GetLastErrorString();
+			WARN_LOG << L"エラーが発生したのでIPCを無効化します";
+			DisconnectPipeAndStopProcess();
+			m_config.bEnableIPC = false;
+			return TRUE;
 		}
 	}
-	//BOOL b = g_winputPluginTable->func_init();
-	//return b;
-
 	return TRUE;
 }
 
@@ -200,12 +221,8 @@ BOOL func_exit( void )
 		g_videoSharedMemory.CloseHandle();
 		g_audioSharedMemory.CloseHandle();
 
-		g_namedPipe.Disconnect();
-		g_bindProcess.StopProcess();
+		DisconnectPipeAndStopProcess();
 	}
-	//BOOL b = g_winputPluginTable->func_exit();
-	//return b;
-
 	return TRUE;
 }
 
@@ -223,7 +240,6 @@ INPUT_HANDLE func_open( LPSTR file )
 
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
-#ifndef NO_REMOTE
 	if (m_config.bEnableHandleCache) {
 		std::string fileName = file;
 		auto itfound = std::find_if(g_vecHandleCache.begin(), g_vecHandleCache.end(),
@@ -232,7 +248,7 @@ INPUT_HANDLE func_open( LPSTR file )
 			});
 		if (itfound != g_vecHandleCache.end()) {
 			int& refCount = std::get<int>(*itfound);
-			INFO_LOG << L"Cache found : " << refCount << L" -> " << (refCount + 1);
+			INFO_LOG << L"  Cache found : " << refCount << L" -> " << (refCount + 1);
 			++refCount;
 			return std::get<INPUT_HANDLE>(*itfound);
 		}
@@ -261,16 +277,13 @@ INPUT_HANDLE func_open( LPSTR file )
 		}
 		return ih2;
 	} else {
-		INPUT_HANDLE ih = g_winputPluginTable->func_open(file);
+		
+		INPUT_HANDLE ih = Plugin_func_open(file);
 		if (m_config.bEnableHandleCache) {
 			g_vecHandleCache.emplace_back(std::string(file), ih, 1);
 		}
 		return ih;
 	}
-#else
-	INPUT_HANDLE ih = g_winputPluginTable->func_open(file);
-	return ih;
-#endif
 }
 
 
@@ -281,7 +294,7 @@ BOOL func_close( INPUT_HANDLE ih )
 {
 	INFO_LOG << L"func_close: " << ih;
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
-#ifndef NO_REMOTE
+
 	if (m_config.bEnableHandleCache) {
 		auto itfound = std::find_if(g_vecHandleCache.begin(), g_vecHandleCache.end(),
 			[ih](const HandleCache& handleCache) {
@@ -289,16 +302,16 @@ BOOL func_close( INPUT_HANDLE ih )
 			});
 		assert(itfound != g_vecHandleCache.end());
 		if (itfound == g_vecHandleCache.end()) {
-			ERROR_LOG << L"func_close g_vecFileInputHandle.erase failed: " << ih;
+			ERROR_LOG << L"  func_close g_vecFileInputHandle.erase failed: " << ih;
 		} else {
 			int& refCount = std::get<int>(*itfound);
-			INFO_LOG << L"Cache refCount : " << refCount << L" -> " << (refCount - 1);
+			INFO_LOG << L"  Cache refCount : " << refCount << L" -> " << (refCount - 1);
 			--refCount;
 			if (refCount > 0) {
 				return TRUE;		// まだ消さない！
 
 			} else {
-				INFO_LOG << L"Cache delete: " << ih;
+				INFO_LOG << L"  Cache delete: " << ih;
 				g_vecHandleCache.erase(itfound);
 			}
 		}
@@ -323,13 +336,9 @@ BOOL func_close( INPUT_HANDLE ih )
 		g_mapFrameBufferSize.erase(ih);
 		return retData.first;
 	} else {
-		BOOL b = g_winputPluginTable->func_close(ih);
+		BOOL b = Plugin_func_close(ih);
 		return b;
 	}
-#else
-	BOOL b = g_winputPluginTable->func_close(ih);
-	return b;
-#endif
 }
 
 
@@ -340,11 +349,10 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 {
 	INFO_LOG << L"func_info_get";
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
-#ifndef NO_REMOTE
 
 	auto itfound = g_mapInputHandleInfoGetData.find(ih);
 	if (itfound != g_mapInputHandleInfoGetData.end()) {
-		INFO_LOG << L"InfoGetData cache found!";
+		INFO_LOG << L"  InfoGetData cache found!";
 		*iip = *reinterpret_cast<INPUT_INFO*>(itfound->second.get());
 		return TRUE;
 	}
@@ -355,57 +363,39 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
 		FromWinputData* fromData = (FromWinputData*)headerData.data();
-		INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
+		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
 		assert(fromData->callFunc == CallFunc::kInfoGet);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
 		auto retData = ParseFromInputData<BOOL>(readBody);
 		if (retData.first) {
-			auto tempInputInfo = (INPUT_INFO*)retData.second;
-			const int infoGetDataSize = sizeof(INPUT_INFO) + tempInputInfo->format_size + tempInputInfo->audio_format_size;
-			auto infoGetData = std::make_unique<BYTE[]>(infoGetDataSize);
-			memcpy_s(infoGetData.get(), infoGetDataSize, tempInputInfo, infoGetDataSize);
-
-			auto igData = reinterpret_cast<INPUT_INFO*>(infoGetData.get());
-			igData->format = (BITMAPINFOHEADER*)(infoGetData.get() + sizeof(INPUT_INFO));
-			igData->audio_format = (WAVEFORMATEX*)(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size);
-			*iip = *igData;
+			auto infoGetData = DeserializeInputInfo(retData.second, iip);
 			g_mapInputHandleInfoGetData.emplace(ih, std::move(infoGetData));
 
-			const int OneFrameBufferSize = iip->format->biWidth * iip->format->biHeight * (iip->format->biBitCount / 8);
-			const int PerAudioSampleBufferSize = iip->audio_format->nChannels * (iip->audio_format->wBitsPerSample / 8);
+			int OneFrameBufferSize = 0;
+			if (iip->format_size > 0) {
+				OneFrameBufferSize = iip->format->biWidth* iip->format->biHeight* (iip->format->biBitCount / 8);
+			}
+			int PerAudioSampleBufferSize = 0;
+			if (iip->audio_format_size > 0) {
+				PerAudioSampleBufferSize = iip->audio_format->nChannels* (iip->audio_format->wBitsPerSample / 8);
+			}
 			g_mapFrameBufferSize.emplace(ih, FrameAudioVideoBufferSize{ OneFrameBufferSize , PerAudioSampleBufferSize });
 
-			INFO_LOG << L"OneFrameBufferSize: " << OneFrameBufferSize << L" PerAudioSampleBufferSize: " << PerAudioSampleBufferSize;
+			INFO_LOG << L"  OneFrameBufferSize: " << OneFrameBufferSize << L" PerAudioSampleBufferSize: " << PerAudioSampleBufferSize;
 		} else {
-			ERROR_LOG << L"func_info_get failed, ih: " << ih;
+			ERROR_LOG << L"  func_info_get failed, ih: " << ih;
 		}
 		return retData.first;
 
 	} else {
-		BOOL b = g_winputPluginTable->func_info_get(ih, iip);
+		BOOL b = Plugin_func_info_get(ih, iip);
 		if (b) {
-			const int infoGetDataSize = sizeof(INPUT_INFO) + iip->format_size + iip->audio_format_size;
-			auto infoGetData = std::make_unique<BYTE[]>(infoGetDataSize);
-			memcpy_s(infoGetData.get(), infoGetDataSize, iip, sizeof(INPUT_INFO));
-
-			auto igData = reinterpret_cast<INPUT_INFO*>(infoGetData.get());			
-			::memcpy_s(infoGetData.get() + sizeof(INPUT_INFO),
-				igData->format_size,
-				igData->format, igData->format_size);
-			::memcpy_s(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size,
-				igData->audio_format_size,
-				igData->audio_format, igData->audio_format_size);
-			igData->format = (BITMAPINFOHEADER*)(infoGetData.get() + sizeof(INPUT_INFO));
-			igData->audio_format = (WAVEFORMATEX*)(infoGetData.get() + sizeof(INPUT_INFO) + igData->format_size);
+			auto infoGetData = SerializeInputInfo(iip);
 			g_mapInputHandleInfoGetData.emplace(ih, std::move(infoGetData));
 		}
 
 		return b;
 	}
-#else
-	BOOL b = g_winputPluginTable->func_info_get(ih, iip);
-	return b;
-#endif
 }
 
 //---------------------------------------------------------------------
@@ -420,7 +410,6 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 	auto startTime = std::chrono::high_resolution_clock::now();
 #endif
 
-#ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
 		const int OneFrameBufferSize = g_mapFrameBufferSize[ih].OneFrameBufferSize;
 
@@ -486,24 +475,8 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 		return readBytes;
 
 	} else {
-		int readBytes = g_winputPluginTable->func_read_video(ih, frame, buf);
-		if (readBytes == 0) {
-			// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
-			int prevFrame = frame - 1;
-			if (prevFrame < 0) {
-				prevFrame = frame + 1;
-			}
-			int prevReadBytes = g_winputPluginTable->func_read_video(ih, prevFrame, buf);
-			if (prevReadBytes == 0) {
-				assert(false);
-				//ERROR_LOG << L"prevReadBytes == 0";
-			}
-			readBytes = g_winputPluginTable->func_read_video(ih, frame, buf);
-			if (readBytes == 0) {
-				assert(false);
-				ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
-			}
-		}
+
+		int readBytes = Plugin_func_read_video(ih, frame, buf);
 
 #ifdef DEBUG_PROCESSINGTIME 	// 処理時間計測
 		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
@@ -529,10 +502,7 @@ int func_read_video( INPUT_HANDLE ih,int frame,void *buf )
 #endif
 		return readBytes;
 	}
-#else
-	int n = g_winputPluginTable->func_read_video(ih, frame, buf);
-	return n;
-#endif
+
 }
 
 #undef DEBUG_PROCESSINGTIME
@@ -549,7 +519,6 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 	auto startTime = std::chrono::high_resolution_clock::now();
 #endif
 
-#ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
 		const int PerAudioSampleBufferSize = g_mapFrameBufferSize[ih].PerAudioSampleBufferSize;
 
@@ -614,7 +583,7 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 #endif
 		return readSample;
 	} else {
-		int n = g_winputPluginTable->func_read_audio(ih, start, length, buf);
+		int n = Plugin_func_read_audio(ih, start, length, buf);
 #ifdef DEBUG_PROCESSINGTIME	// 処理時間計測
 		auto processingTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - startTime).count();
 		static bool firstSkip = true;
@@ -639,28 +608,6 @@ int func_read_audio(INPUT_HANDLE ih, int start, int length, void* buf)
 #endif
 		return n;
 	}
-#if 0
-	std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
-	auto retData = ParseFromInputData<int>(readBody);
-	const int requestReadBytes = PerAudioSampleBufferSize * length;
-	::memcpy_s(buf, requestReadBytes, retData.second, requestReadBytes);
-
-	return retData.first;
-#endif
-#else
-
-	int n = g_winputPluginTable->func_read_audio(ih, start, length, buf);
-	return n;
-#endif
-#if 0
-	FILE_HANDLE * fp = (FILE_HANDLE*)ih;
-	LONG		size;
-	int			samplesize;
-
-	samplesize = ((WAVEFORMATEX*)fp->audioformat)->nBlockAlign;
-	if (AVIStreamRead(fp->paudio, start, length, buf, samplesize * length, NULL, &size)) return 0;
-	return size;
-#endif
 }
 
 
@@ -672,7 +619,6 @@ BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 	// INFO_LOG << L"func_is_keyframe" << L" frame:" << frame;
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
-#ifndef NO_REMOTE
 	if (m_config.bEnableIPC) {
 		StandardParamPack spp = { ih, frame };
 		auto toData = GenerateToInputData(CallFunc::kIsKeyframe, spp);
@@ -688,15 +634,6 @@ BOOL func_is_keyframe(INPUT_HANDLE ih, int frame)
 		BOOL b = g_winputPluginTable->func_is_keyframe(ih, frame);
 		return b;
 	}
-#else
-	BOOL b = g_winputPluginTable->func_is_keyframe(ih, frame);
-	return b;
-#endif
-#if 0
-	FILE_HANDLE	*fp = (FILE_HANDLE *)ih;
-
-	return AVIStreamIsKeyFrame(fp->pvideo,frame);
-#endif
 }
 
 
@@ -714,13 +651,6 @@ BOOL func_config( HWND hwnd, HINSTANCE dll_hinst )
 #else
 	BOOL b = g_winputPluginTable->func_config(hwnd, dll_hinst);
 	return b;
-#endif
-#if 0
-	MessageBoxA(hwnd,"サンプルダイアログ","入力設定",MB_OK);
-
-	//	DLLを開放されても設定が残るように保存しておいてください。
-
-	return TRUE;
 #endif
 }
 

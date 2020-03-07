@@ -48,7 +48,15 @@ LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /
 	}
 	m_config.bUseSharedMemory = m_radioNamedPipeOrSharedMemory == 1 ? true : false;
 
-	m_config.SaveConfig();
+	if (!m_config.SaveConfig()) {
+		CString errorMsg = L"設定の保存に失敗しました。";
+		CString exeFolderPath = GetExeDirectory().wstring().c_str();
+		exeFolderPath.MakeLower();
+		if (exeFolderPath.Find(LR"(\program files (x86)\)") != -1 || exeFolderPath.Find(LR"(\program files\)") != -1) {
+			errorMsg += L"\nAviUtlフォルダを [Program Files]や[Program Files (x86)]フォルダ内に置かないでください";
+		}
+		MessageBox(errorMsg, L"InputPipeMain - エラー", MB_ICONERROR);
+	}
 
 	CloseDialog(0);
 	return 0;

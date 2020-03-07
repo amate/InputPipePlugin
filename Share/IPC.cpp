@@ -4,23 +4,8 @@
 #include <atldef.h>
 #include <assert.h>
 //#include "Logger.h"
+#include "Common.h"
 
-
-std::wstring GetLastErrorMessage(DWORD error)
-{
-	LPVOID pMsg = nullptr;
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER  //      テキストのメモリ割り当てを要求する
-		| FORMAT_MESSAGE_FROM_SYSTEM    //      エラーメッセージはWindowsが用意しているものを使用
-		| FORMAT_MESSAGE_IGNORE_INSERTS,//      次の引数を無視してエラーコードに対するエラーメッセージを作成する
-		NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),//   言語を指定
-		(LPTSTR)&pMsg,                          //      メッセージテキストが保存されるバッファへのポインタ
-		0,
-		NULL);
-	std::wstring errorMsg = (LPCWSTR)pMsg;
-	LocalFree(pMsg);
-	return errorMsg;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////
 // BindProcess
@@ -121,15 +106,13 @@ bool NamedPipe::OpenNamedPipe(const std::wstring& pipeName)
 
 bool	NamedPipe::ConnectNamedPipe()
 {
-	BOOL b = FALSE;
-	for (int i = 0; i < 10; ++i) {
-		b = ::ConnectNamedPipe(m_hPipe, nullptr);
-		if (b != 0) {
-			break;
-		}
-		::Sleep(100);
+	BOOL b = ::ConnectNamedPipe(m_hPipe, nullptr);
+	DWORD error = GetLastError();
+	if (b != 0 || error == ERROR_PIPE_CONNECTED) {
+		return true;
+	} else {
+		return false;
 	}
-	return b != 0;
 }
 
 void NamedPipe::Disconnect()

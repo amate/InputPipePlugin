@@ -21,7 +21,7 @@ private:
 
 class NamedPipe
 {
-	enum { kBuffSize = 512, kMaxInstance = 1 };
+	enum { kBuffSize = 4096, kMaxInstance = 1 };
 
 public:
 	~NamedPipe();

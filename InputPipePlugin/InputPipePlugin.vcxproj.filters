@@ -39,6 +39,9 @@
     <ClInclude Include="..\Share\CodeConvert.h">
       <Filter>ソース ファイル\Share</Filter>
     </ClInclude>
+    <ClInclude Include="..\Share\PluginWrapper.h">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -60,6 +63,9 @@
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
     <ClCompile Include="..\Share\Common.cpp">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Share\PluginWrapper.cpp">
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
   </ItemGroup>

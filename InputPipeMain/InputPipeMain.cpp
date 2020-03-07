@@ -10,6 +10,7 @@
 #include "..\Share\IPC.h"
 //#include "..\Share\Logger.h"
 #include "..\Share\Common.h"
+#include "..\Share\PluginWrapper.h"
 #include "..\InputPipePlugin\input.h"
 #include "MainDlg.h"
 
@@ -158,7 +159,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	// for Debug
 	CallFunc	lastCallFunc;
-	for (;;) {
+	bool activeLoop = true;
+	while (activeLoop) {
 		std::vector<BYTE> readData = namedPipe.Read(kToWindDataHeaderSize);
 		if (readData.size() == 0) {
 			assert(false);
@@ -172,7 +174,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			case CallFunc::kOpen:
 			{
 				LPSTR file = (LPSTR)dataBody.data();
-				INPUT_HANDLE ih = g_winputPluginTable->func_open(file);
+				INPUT_HANDLE ih = Plugin_func_open(file);
 				//INFO_LOG << L"kOpen: " << ih;
 
 				auto fromData = GenerateFromInputData(CallFunc::kOpen, ih, 0);
@@ -184,7 +186,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			case CallFunc::kClose:
 			{
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
-				BOOL b = g_winputPluginTable->func_close(spp->ih);
+				BOOL b = Plugin_func_close(spp->ih);
 				//INFO_LOG << L"kClose: " << spp->ih;
 
 				auto fromData = GenerateFromInputData(CallFunc::kClose, b, 0);
@@ -198,21 +200,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				INPUT_INFO inputInfo = {};
-				BOOL b = g_winputPluginTable->func_info_get(spp->ih, &inputInfo);
+				BOOL b = Plugin_func_info_get(spp->ih, &inputInfo);
 				assert(b);
 				//INFO_LOG << L"kInfoGet: " << spp->ih;
 				if (b) {
-					int totalInputInfoSize = sizeof(INPUT_INFO) + inputInfo.format_size + inputInfo.audio_format_size;
-					std::vector<BYTE> entireInputInfo(totalInputInfoSize);
-					errno_t e = ::memcpy_s(entireInputInfo.data(), totalInputInfoSize, &inputInfo, sizeof(INPUT_INFO));
-					e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO),
-						inputInfo.format_size,
-						inputInfo.format, inputInfo.format_size);
-					e = ::memcpy_s(entireInputInfo.data() + sizeof(INPUT_INFO) + inputInfo.format_size,
-						inputInfo.audio_format_size,
-						inputInfo.audio_format, inputInfo.audio_format_size);
+					const int totalInputInfoSize = CalcTotalInputInfoSize(&inputInfo);
+					auto infoGetData = SerializeInputInfo(&inputInfo);
 
-					auto fromData = GenerateFromInputData(CallFunc::kInfoGet, b, entireInputInfo.data(), totalInputInfoSize);
+					auto fromData = GenerateFromInputData(CallFunc::kInfoGet, b, infoGetData.get(), totalInputInfoSize);
 					namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
 					//INFO_LOG << L"Write: " << FromWinputDataTotalSize(*fromData) << L" bytes";
 
@@ -249,26 +244,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					}
 					buf = g_readVideoBuffer.data();
 				}
-				INPUT_INFO inputInfo = {};
 				const int frame = spp->param1;
-				int readBytes = g_winputPluginTable->func_read_video(spp->ih, spp->param1, buf);
-				if (readBytes == 0) {
-					// 画像の取得に失敗したので、前のフレームを取得して目的のフレームの生成を促す
-					int prevFrame = frame - 1;
-					if (prevFrame < 0) {
-						prevFrame = frame + 1;
-					}
-					int prevReadBytes = g_winputPluginTable->func_read_video(spp->ih, prevFrame, g_readVideoBuffer.data());
-					if (prevReadBytes == 0) {
-						assert(false);
-						//ERROR_LOG << L"prevReadBytes == 0";
-					}
-					readBytes = g_winputPluginTable->func_read_video(spp->ih, frame, g_readVideoBuffer.data());
-					if (readBytes == 0) {
-						assert(false);
-						//ERROR_LOG << L"readBytes == 0 : retry func_read_video failed";
-					}
-				}
+				int readBytes = Plugin_func_read_video(spp->ih, spp->param1, buf);
 				//INFO_LOG << L"kReadVideo: " << spp->ih;
 
 				namedPipe.Write((const BYTE*)&toData->header.callFunc, sizeof(toData->header.callFunc));
@@ -314,8 +291,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					buf = g_readAudioBuffer.data();
 				}
 
-				int readSample = g_winputPluginTable->func_read_audio(spp->ih, spp->param1, spp->param2, buf);
-				assert(readSample > 0);
+				int readSample = Plugin_func_read_audio(spp->ih, spp->param1, spp->param2, buf);
+				//assert(readSample > 0);
 				//INFO_LOG << L"kReadAudio: " << spp->ih << L" readSample: " << readSample;
 				const int readBufferSize = PerAudioSampleBufferSize * readSample;
 
@@ -350,6 +327,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			{
 				//INFO_LOG << L"kExit";
 				namedPipe.Disconnect();
+				activeLoop = false;
 			}
 			break;
 
