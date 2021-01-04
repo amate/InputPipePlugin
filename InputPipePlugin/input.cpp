@@ -226,6 +226,17 @@ BOOL func_exit( void )
 	return TRUE;
 }
 
+bool	IsAlternativeFileName(const std::string& filePath)
+{
+	return filePath.rfind(".[alt_") != std::string::npos;
+}
+
+std::string ConvertOriginalFileNameFromAlt(const std::string& filePath)
+{
+	auto pos = filePath.rfind(".[alt_");
+	return filePath.substr(0, pos);
+}
+
 
 //---------------------------------------------------------------------
 //		ファイルオープン
@@ -240,7 +251,10 @@ INPUT_HANDLE func_open( LPSTR file )
 
 	std::lock_guard<std::mutex> lock(g_mtxIPC);
 
-	if (m_config.bEnableHandleCache) {
+	const bool bAltKeyPress = ::GetAsyncKeyState(VK_MENU) < 0;
+	const bool bAlternativeFileName = IsAlternativeFileName(file);
+
+	if (m_config.bEnableHandleCache && (!bAltKeyPress || bAlternativeFileName)) {
 		std::string fileName = file;
 		auto itfound = std::find_if(g_vecHandleCache.begin(), g_vecHandleCache.end(),
 			[fileName](const HandleCache& handleCache) {
@@ -253,15 +267,24 @@ INPUT_HANDLE func_open( LPSTR file )
 			return std::get<INPUT_HANDLE>(*itfound);
 		}
 	}
+
+	INPUT_HANDLE ih = NULL;
+	std::string filePath = file;
+	if (bAlternativeFileName) {
+		filePath = ConvertOriginalFileNameFromAlt(filePath);
+		INFO_LOG << L"	ConvertOriginalFileNameFromAlt";
+	}
+
+	/* func_open */
 	if (m_config.bEnableIPC) {
-		size_t paramSize = strnlen_s(file, MAX_PATH) + 1;
+		size_t paramSize = filePath.length() + 1;
 		std::shared_ptr<ToWinputData> toData((ToWinputData*)new BYTE[kToWindDataHeaderSize + paramSize],
 			[](ToWinputData* p) {
 				delete[](BYTE*)p;
 			});
 		toData->header.callFunc = CallFunc::kOpen;
 		toData->header.paramSize = paramSize;
-		memcpy_s(toData->paramData, paramSize, file, paramSize);
+		memcpy_s(toData->paramData, paramSize, filePath.c_str(), paramSize);
 		g_namedPipe.Write((const BYTE*)toData.get(), ToWinputDataTotalSize(*toData));
 
 		std::vector<BYTE> headerData = g_namedPipe.Read(kFromWinputDataHeaderSize);
@@ -269,21 +292,26 @@ INPUT_HANDLE func_open( LPSTR file )
 		//INFO_LOG << L"Read: " << fromData->returnSize << L" bytes";
 		assert(fromData->callFunc == CallFunc::kOpen);
 		std::vector<BYTE> readBody = g_namedPipe.Read(fromData->returnSize);
-		INPUT_HANDLE ih2 = *(INPUT_HANDLE*)readBody.data();
-		INFO_LOG << ih2;
+		ih = *(INPUT_HANDLE*)readBody.data();
 
-		if (m_config.bEnableHandleCache) {
-			g_vecHandleCache.emplace_back(std::string(file), ih2, 1);
-		}
-		return ih2;
 	} else {
-		
-		INPUT_HANDLE ih = Plugin_func_open(file);
-		if (m_config.bEnableHandleCache) {
-			g_vecHandleCache.emplace_back(std::string(file), ih, 1);
-		}
-		return ih;
+		ih = Plugin_func_open(const_cast<LPSTR>(filePath.data()));
 	}
+	INFO_LOG << ih;
+
+	if (m_config.bEnableHandleCache) {
+		if (bAlternativeFileName) {
+			filePath = file;	//　ファイル名をAlternativeFileNameへ戻す
+		} else if (bAltKeyPress) {
+			filePath += ".[alt_" + std::to_string(reinterpret_cast<intptr_t>(ih)) + "].#junk";
+			::strcpy_s(file, MAX_PATH, filePath.c_str());	// 元のファイル名を変更する
+			INFO_LOG << L"	Add Alt";
+			std::ofstream tempfs(file);	// 一時ファイル作成
+		}
+		g_vecHandleCache.emplace_back(filePath, ih, 1);
+	}
+
+	return ih;
 }
 
 
