@@ -90,7 +90,7 @@ bool Config::LoadConfig()
 	auto ptree = ptreeWrapper::LoadIniPtree(kConfigFileName);
 	bEnableHandleCache = ptree.get<bool>(L"Config.bEnableHandleCache", true);
 	bEnableIPC = ptree.get<bool>(L"Config.bEnableIPC", true);
-	bUseSharedMemory = ptree.get<bool>(L"Config.bUseSharedMemory", false);
+	bUseSharedMemory = ptree.get<bool>(L"Config.bUseSharedMemory", true);
 
 	return true;
 }

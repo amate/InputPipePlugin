@@ -6,6 +6,8 @@
 
 #include "..\InputPipePlugin\input.h"
 
+BOOL Plugin_func_init();
+BOOL Plugin_func_exit();
 INPUT_HANDLE Plugin_func_open(LPSTR file);
 BOOL Plugin_func_close(INPUT_HANDLE ih);
 BOOL Plugin_func_info_get(INPUT_HANDLE ih, INPUT_INFO* iip);

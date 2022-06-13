@@ -201,8 +201,12 @@ BOOL func_init( void )
 			m_config.bEnableIPC = false;
 			return TRUE;
 		}
+		return TRUE;
+
+	} else {
+		BOOL b = Plugin_func_init();
+		return b;
 	}
-	return TRUE;
 }
 
 
@@ -222,8 +226,12 @@ BOOL func_exit( void )
 		g_audioSharedMemory.CloseHandle();
 
 		DisconnectPipeAndStopProcess();
+
+		return TRUE;
+	} else {
+		BOOL b = Plugin_func_exit();
+		return b;
 	}
-	return TRUE;
 }
 
 bool	IsAlternativeFileName(const std::string& filePath)

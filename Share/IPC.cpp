@@ -32,7 +32,7 @@ bool BindProcess::StartProcess(const std::wstring& exePath, const std::wstring& 
 		securityAttributes.bInheritHandle = TRUE;
 		std::wstring cmdLine = L" " + std::to_wstring((uint64_t)m_hEventKillSwitch) + L" " + commandLine;
 		BOOL bRet = ::CreateProcess(exePath.c_str(), (LPWSTR)cmdLine.data(),
-			nullptr, nullptr, TRUE, 0, nullptr, nullptr, &startUpInfo, &processInfo);
+			nullptr, nullptr, TRUE, 0, nullptr, GetExeDirectory().c_str(), &startUpInfo, &processInfo);
 		ATLASSERT(bRet);
 		::CloseHandle(processInfo.hThread);
 		::CloseHandle(processInfo.hProcess);

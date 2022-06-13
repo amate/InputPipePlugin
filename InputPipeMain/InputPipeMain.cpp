@@ -157,6 +157,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return 0;
 	}
 
+	BOOL b = Plugin_func_init();
+
 	// for Debug
 	CallFunc	lastCallFunc;
 	bool activeLoop = true;
@@ -337,6 +339,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		}
 
 	};
+
+	b = Plugin_func_exit();
+
 	::FreeLibrary(g_hWinputDll);
 	g_hWinputDll = NULL;
 

@@ -9,6 +9,28 @@
 
 extern INPUT_PLUGIN_TABLE* g_winputPluginTable;
 
+BOOL Plugin_func_init()
+{
+	if (g_winputPluginTable->func_init) {
+		BOOL b = g_winputPluginTable->func_init();
+		return b;
+
+	} else {
+		return TRUE;
+	}
+}
+
+BOOL Plugin_func_exit()
+{
+	if (g_winputPluginTable->func_exit) {
+		BOOL b = g_winputPluginTable->func_exit();
+		return b;
+
+	} else {
+		return TRUE;
+	}
+}
+
 
 INPUT_HANDLE Plugin_func_open(LPSTR file)
 {

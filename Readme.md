@@ -10,6 +10,7 @@ aviutlのメモリ使用量削減を目論む、aviutlの入力プラグイン�
 ・拡張編集 0.92  
 ※ 拡張編集 0.93rc1 はシーン周りに不具合があるので推奨しません  
 ・L-SMASH Works r935 release2  
+・L-SMASH-Works_rev1096_Mr-Ojii_Mr-Ojii_AviUtl  
 上記の環境で動作を確認しています  
 XPではたぶん動きません(コンパイラが対応していないため)  
 
@@ -90,7 +91,7 @@ InputPipePluginConfig.ini を削除してください
 https://ws.formzu.net/fgen/S37403840/
  
 ## ■著作権表示
-Copyright (C) 2019-2020 amate
+Copyright (C) 2019-2022 amate
 
 私が書いた部分のソースコードは、MIT License とします。
 
@@ -123,7 +124,7 @@ AvidemuxのVideo OutputとAudio OutputをCopyに、Output FormatをMkv Muxerに�
 コンテナを変更するだけでなぜ直るのかは謎
  
 ## ■ビルドについて
-Visual Studio 2019 が必要です  
+Visual Studio 2022 が必要です  
 ビルドには boost(1.70~)とWTL(10_9163) が必要なのでそれぞれ用意してください。
 
 Boost::Logを使用しているので、事前にライブラリのビルドが必要になります
@@ -142,6 +143,12 @@ http://sourceforge.net/projects/wtl/
 
 ## ■更新履歴
 <pre>
+
+v1.9
+・[update] 開発環境を Visual Studio 2022 に更新
+・[fix] lwinput.auiに func_init、func_exitが実装されていれば、それぞれ呼ぶようにした (オリジナルはnullptrだったので呼んでいなかった)
+・[change] 内部データ交換方式は、"共有メモリ"をデフォルトにした
+・[fix] InputPipePlugin.aui から InputPipeMain.exe 実行時に、カレントディレクトリを設定するようにした (lsmash.iniを読み込めるようになったはず)
 
 v1.8
 ・[add] 同一フレーム同一ファイル問題に対処、Altを押しながらのファイルドロップで、新規ファイルとして開く処理を追加
