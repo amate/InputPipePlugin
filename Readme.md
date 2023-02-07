@@ -4,6 +4,9 @@
 このソフトは、L-SMASH_Works File Reader(lwinput.aui)を別プロセスで実行してあげることによって  
 aviutlのメモリ使用量削減を目論む、aviutlの入力プラグインです
 
+ダウンロードはこちらから  
+https://github.com/amate/InputPipePlugin/releases/latest
+
 ## ■動作環境
 ・Windows 10 home 64bit バージョン 2004  
 ・AviUtl 1.00 or 1.10  
@@ -15,6 +18,10 @@ aviutlのメモリ使用量削減を目論む、aviutlの入力プラグイン�
 XPではたぶん動きません(コンパイラが対応していないため)  
 
 ## ■導入方法
+
+https://github.com/amate/InputPipePlugin/releases/latest  
+上記リンクから"InputPipePlugin_1.x.zip"をダウンロードして、適当なフォルダに展開します   
+
 lwinput.aui が置いてあるフォルダ(aviutl.exeがあるフォルダ、もしくは "aviutl.exeがあるフォルダ\plugins\"に存在するはず)に、  
 InputPipePlugin.aui と InputPipeMain.exe をコピーするだけです  
 
@@ -91,7 +98,7 @@ InputPipePluginConfig.ini を削除してください
 https://ws.formzu.net/fgen/S37403840/
  
 ## ■著作権表示
-Copyright (C) 2019-2022 amate
+Copyright (C) 2019-2023 amate
 
 私が書いた部分のソースコードは、MIT License とします。
 
