@@ -151,6 +151,9 @@ http://sourceforge.net/projects/wtl/
 ## ■更新履歴
 <pre>
 
+v1.10
+・[fix] 動画ファイルの幅、高さが4の倍数でないときに強制終了するバグを修正 #5
+
 v1.9
 ・[update] 開発環境を Visual Studio 2022 に更新
 ・[fix] lwinput.auiに func_init、func_exitが実装されていれば、それぞれ呼ぶようにした (オリジナルはnullptrだったので呼んでいなかった)

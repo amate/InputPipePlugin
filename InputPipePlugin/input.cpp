@@ -409,11 +409,19 @@ BOOL func_info_get( INPUT_HANDLE ih,INPUT_INFO *iip )
 
 			int OneFrameBufferSize = 0;
 			if (iip->format_size > 0) {
-				OneFrameBufferSize = iip->format->biWidth* iip->format->biHeight* (iip->format->biBitCount / 8);
+				int paddingWidth = iip->format->biWidth;
+				if (iip->format->biWidth % 4) {
+					paddingWidth += 4 - (iip->format->biWidth % 4);		// padding 分追加
+				}
+				int paddingHeight = iip->format->biHeight;
+				if (iip->format->biHeight % 4) {
+					paddingHeight += 4 - (iip->format->biHeight % 4);	// padding 分追加
+				}
+				OneFrameBufferSize = paddingWidth * paddingHeight * (iip->format->biBitCount / 8);
 			}
 			int PerAudioSampleBufferSize = 0;
 			if (iip->audio_format_size > 0) {
-				PerAudioSampleBufferSize = iip->audio_format->nChannels* (iip->audio_format->wBitsPerSample / 8);
+				PerAudioSampleBufferSize = iip->audio_format->nChannels * (iip->audio_format->wBitsPerSample / 8);
 			}
 			g_mapFrameBufferSize.emplace(ih, FrameAudioVideoBufferSize{ OneFrameBufferSize , PerAudioSampleBufferSize });
 
