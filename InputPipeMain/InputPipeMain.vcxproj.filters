@@ -48,6 +48,9 @@
     <ClInclude Include="..\Share\PluginWrapper.h">
       <Filter>ソース ファイル\Share</Filter>
     </ClInclude>
+    <ClInclude Include="..\Share\CodeConvert.h">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="InputPipeMain.cpp">
@@ -66,6 +69,9 @@
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
     <ClCompile Include="..\Share\PluginWrapper.cpp">
+      <Filter>ソース ファイル\Share</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Share\CodeConvert.cpp">
       <Filter>ソース ファイル\Share</Filter>
     </ClCompile>
   </ItemGroup>

@@ -24,7 +24,7 @@ BOOL func_config(HWND hwnd, HINSTANCE dll_hinst);
 
 ////////////////////////////////////////////////////////////////
 
-#define		PLUGIN_VERSION	"1.10"
+#define		PLUGIN_VERSION	"2.0"
 
 
 constexpr	int kVideoBufferSurplusBytes = 0x3FF;
@@ -59,7 +59,7 @@ struct Config
 ////////////////////////////////////////////////////////////////
 
 inline int CalcTotalInputInfoSize(INPUT_INFO* iip) { 
-	return sizeof(INPUT_INFO) + iip->format_size + iip->audio_format_size;
+	return sizeof(INPUT_INFO32) + iip->format_size + iip->audio_format_size;
 }
 
 std::unique_ptr<BYTE[]> SerializeInputInfo(INPUT_INFO* iip);
@@ -83,7 +83,11 @@ enum class CallFunc : std::int32_t
 
 struct StandardParamPack
 {
+#ifdef _WIN64
+	INPUT_HANDLE32 ih;
+#else
 	INPUT_HANDLE ih;
+#endif
 	int param1;
 	int param2;
 	int perBufferSize;
@@ -143,7 +147,7 @@ std::shared_ptr<FromWinputData> GenerateFromInputData(CallFunc callFunc, RetT re
 		delete[] (BYTE*)p;  
 	});
 	fromData->callFunc = callFunc;
-	fromData->returnSize = returnSize;
+	fromData->returnSize = static_cast<std::int32_t>(returnSize);
 	memcpy_s(fromData->returnData, sizeof(ret), &ret, sizeof(ret));
 	memcpy_s(fromData->returnData + sizeof(ret), sizeof(retParam), &retParam, sizeof(retParam));
 	return fromData;
@@ -158,7 +162,7 @@ std::shared_ptr<FromWinputData> GenerateFromInputData(CallFunc callFunc, RetT re
 			delete[](BYTE*)p;
 		});
 	fromData->callFunc = callFunc;
-	fromData->returnSize = returnSize;
+	fromData->returnSize = static_cast<std::int32_t>(returnSize);
 	memcpy_s(fromData->returnData, sizeof(ret), &ret, sizeof(ret));
 	memcpy_s(fromData->returnData + sizeof(ret), retParamSize, retParam, retParamSize);
 	return fromData;

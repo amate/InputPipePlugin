@@ -178,6 +178,10 @@ BOOL func_init( void )
 		}
 
 		auto InputPipeMainPath = GetExeDirectory() / L"InputPipeMain.exe";
+		auto lwinput64Path = GetExeDirectory() / L"lwinput64.aui";
+		if (fs::exists(lwinput64Path)) {
+			InputPipeMainPath = GetExeDirectory() / L"InputPipeMain64.exe";
+		}
 
 		std::wstring commandLine = pipeName;
 		if (m_config.bUseSharedMemory) {

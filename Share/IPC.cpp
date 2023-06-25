@@ -48,8 +48,8 @@ void BindProcess::StopProcess()
 	::CloseHandle(m_hEventKillSwitch);
 
 #ifdef _WIN64
-	::SetEvent(m_hEventAPIHookTrapper64);
-	::CloseHandle(m_hEventAPIHookTrapper64);
+	//::SetEvent(m_hEventAPIHookTrapper64);
+	//::CloseHandle(m_hEventAPIHookTrapper64);
 #endif
 
 	::CloseHandle(m_hJob);

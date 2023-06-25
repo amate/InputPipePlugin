@@ -24,6 +24,12 @@ INPUT_PLUGIN_TABLE* g_winputPluginTable = nullptr;
 std::vector<BYTE>	g_readVideoBuffer;
 std::vector<BYTE>	g_readAudioBuffer;
 
+#ifdef _WIN64
+#define LWINNPUT_NAME	L"lwinput64.aui"
+#else
+#define LWINNPUT_NAME	L"lwinput.aui"
+#endif
+
 // for Logger
 std::string	LogFileName()
 {
@@ -81,14 +87,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
+#ifdef _DEBUG
+	ATLTRACE(L"INPUT_INFO         size: %d\n", sizeof(INPUT_INFO));
+	ATLTRACE(L"INPUT_INFO32       size: %d\n", sizeof(INPUT_INFO32));
+	ATLTRACE(L"INPUT_PLUGIN_TABLE size: %d\n", sizeof(INPUT_PLUGIN_TABLE));
+
+#endif
+
 	g_hModule = hInstance;
 #if 1
 	std::wstring cmdLine = lpCmdLine;//::GetCommandLine();
 	// INFO_LOG << L"CommandLine: " << cmdLine;
 	if (cmdLine.empty()) {
-		bool pluginExists = fs::exists((GetExeDirectory() / L"lwinput.aui"));
-		MessageBox(NULL, pluginExists ? L"lwinput.aui が同じフォルダに存在しています！" 
-									  : L"lwinput.aui が同じフォルダに存在しません...", L"InputPipeMain", MB_OK);
+		bool pluginExists = fs::exists((GetExeDirectory() / LWINNPUT_NAME));
+		MessageBox(NULL, pluginExists ? LWINNPUT_NAME L" が同じフォルダに存在しています！"
+									  : LWINNPUT_NAME L" が同じフォルダに存在しません...", L"InputPipeMain", MB_OK);
 		return 0;
 	} else if (cmdLine == L"-config") {
 		int ret = Run();
@@ -117,7 +130,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	::CloseHandle(hJob);
 
 	{
-		g_hWinputDll = ::LoadLibrary((GetExeDirectory() /L"lwinput.aui").c_str());
+		g_hWinputDll = ::LoadLibrary((GetExeDirectory() / LWINNPUT_NAME).c_str());
 		assert(g_hWinputDll);
 		if (g_hWinputDll == NULL) {
 			//WARN_LOG << L"LoadLibrary failed (lwinput.aui)";
@@ -126,7 +139,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 		using GetInputPluginTableFunc = INPUT_PLUGIN_TABLE * (__stdcall*)(void);
 		GetInputPluginTableFunc funcGetTable = (GetInputPluginTableFunc)::GetProcAddress(g_hWinputDll, "GetInputPluginTable");
-
+		ATLASSERT(funcGetTable);
 		g_winputPluginTable = funcGetTable();
 	}
 
@@ -154,6 +167,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	NamedPipe namedPipe;
 	bool success = namedPipe.OpenNamedPipe(pipeName);
 	if (!success) {
+		ATLASSERT(FALSE);
 		return 0;
 	}
 
@@ -176,7 +190,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			case CallFunc::kOpen:
 			{
 				LPSTR file = (LPSTR)dataBody.data();
+#ifdef INPUT_PIPE_MAIN64
+				INPUT_HANDLE32 ih = Plugin_func_open(file);
+#else
 				INPUT_HANDLE ih = Plugin_func_open(file);
+#endif
 				//INFO_LOG << L"kOpen: " << ih;
 
 				auto fromData = GenerateFromInputData(CallFunc::kOpen, ih, 0);
@@ -317,9 +335,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			{
 				//INFO_LOG << L"kIsKeyframe";
 
+#ifdef INPUT_PIPE_MAIN64
+				BOOL b = FALSE;
+#else
 				StandardParamPack* spp = (StandardParamPack*)dataBody.data();
 				BOOL b = g_winputPluginTable->func_is_keyframe(spp->ih, spp->param1);
-
+#endif
 				auto fromData = GenerateFromInputData(CallFunc::kIsKeyframe, b, 0);
 				namedPipe.Write((const BYTE*)fromData.get(), FromWinputDataTotalSize(*fromData));
 			}

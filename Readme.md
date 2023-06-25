@@ -39,6 +39,16 @@ InputPipePlugin.aui と InputPipeMain.exe をコピーするだけです
 "InputPipeMain.exe"を起動してみて、"lwinput.aui が同じフォルダに存在しています！"と表示されれば大丈夫です  
 もしくは、[InputPipePluginの設定]から[プロセス間通信を有効にする]のチェックを外してください
 
+## ■InputPipeMain64.exe について
+
+64bit版 L-SMASH_Works File Reader(lwinput64.aui)が InputPipePlugin.aui と同じフォルダ内に存在するとき、そちらを利用するようになります  
+リリース時に 64bit版L-SMASH_Works File Readerが存在しないので正常に動作するかは不明です  
+
+- 想定している内部仕様について  
+
+32bitと64bitでは INPUT_INFO や INPUT_HANDLE のサイズが異なりますが、InputPipeMain64.exeが内部で変換してからInputPipePlugin.auiへ伝えるので、lwinput64.aui側で特に何かする必要はありません  
+
+
 ## ■設定
 [ファイル]->[環境設定]->[入力プラグインの設定]->[InputPipePluginの設定]で
 プラグインの設定ができます
@@ -150,6 +160,9 @@ http://sourceforge.net/projects/wtl/
 
 ## ■更新履歴
 <pre>
+
+v2.0
+・[add] InputPipeMain64.exeを追加 (64bit版 L-SMASH_Works File Reader(lwinput64.aui)が存在するときはそちらを利用するようにした)
 
 v1.10
 ・[fix] 動画ファイルの幅、高さが4の倍数でないときに強制終了するバグを修正 #5

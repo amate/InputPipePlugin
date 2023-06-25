@@ -7,6 +7,7 @@
 
 #include <Windows.h>
 #include <Mmreg.h>
+#include <stdint.h>
 
 //	入力ファイル情報構造体
 typedef struct {
@@ -25,6 +26,24 @@ typedef struct {
 	DWORD				handler;			//	画像codecハンドラ
 	int					reserve[7];
 } INPUT_INFO;
+
+typedef struct {
+	int					flag;				//	フラグ
+	//	INPUT_INFO_FLAG_VIDEO	: 画像データあり
+	//	INPUT_INFO_FLAG_AUDIO	: 音声データあり
+	//	INPUT_INFO_FLAG_VIDEO_RANDOM_ACCESS	: キーフレームを気にせずにfunc_read_video()を呼び出します
+	//	※標準ではキーフレームからシーケンシャルにfunc_read_video()が呼ばれるように制御されます
+	int					rate, scale;			//	フレームレート
+	int					n;					//	フレーム数
+	uint32_t		format;			//	画像フォーマットへのポインタ(次に関数が呼ばれるまで内容を有効にしておく)			[****ダミー****]
+	int					format_size;		//	画像フォーマットのサイズ
+	int					audio_n;			//	音声サンプル数
+	uint32_t		audio_format;		//	音声フォーマットへのポインタ(次に関数が呼ばれるまで内容を有効にしておく)		[****ダミー****]
+	int					audio_format_size;	//	音声フォーマットのサイズ
+	DWORD				handler;			//	画像codecハンドラ
+	int					reserve[7];
+} INPUT_INFO32;
+
 #define	INPUT_INFO_FLAG_VIDEO				1
 #define	INPUT_INFO_FLAG_AUDIO				2
 #define	INPUT_INFO_FLAG_VIDEO_RANDOM_ACCESS	8
@@ -34,6 +53,7 @@ typedef struct {
 
 //	入力ファイルハンドル
 typedef void*	INPUT_HANDLE;
+typedef uint32_t INPUT_HANDLE32;
 
 //	入力プラグイン構造体
 typedef struct {
